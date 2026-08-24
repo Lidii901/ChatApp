@@ -1,0 +1,8 @@
+{
+  "name": "Dean & Satanence RP",
+  "description": "Mobile-First RP Web App mit getrenntem Mehrfach-Charakter-System, situativer Foto-Generierung, Imitate-Me Modus und dynamischem Kontext-Gedächtnis via OpenRouter.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
