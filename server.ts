@@ -369,7 +369,7 @@ app.post('/api/jobs/chat', async (req: Request, res: Response) => {
     (async () => {
       try {
         const payload = buildChatPayload({
-          character, messages, language, contextWindowSize: settings.contextWindowSize || 12,
+          character, messages, storyContext, language, contextWindowSize: settings.contextWindowSize || 12,
         });
         const [systemMessage, ...messagesPayload] = payload.messages;
         const systemPrompt = systemMessage.content;
@@ -684,7 +684,7 @@ app.post('/api/chat', async (req: Request, res: Response) => {
     const isDean = character?.id === 'char-dean' || character?.name?.trim().toLowerCase() === 'dean';
     const charName = character?.name || (isDean ? 'Dean' : 'Charakter');
     const payload = buildChatPayload({
-      character, messages, language, contextWindowSize: settings.contextWindowSize || 12,
+      character, messages, storyContext, language, contextWindowSize: settings.contextWindowSize || 12,
     });
     const [systemMessage, ...messagesPayload] = payload.messages;
     const systemPrompt = systemMessage.content;
@@ -808,9 +808,9 @@ Recent messages:\n${(messages || []).slice(-10).map((m: any) => `${m.role}: ${m.
 // Diagnostics & Prompt Inspector Endpoint (Verifies exact Chub AI / CCv2 Prompt order)
 app.post('/api/debug/inspect-prompt', (req: Request, res: Response) => {
   try {
-    const { character, messages = [], language = 'de', settings = {}, characterId, chatId } = req.body;
+    const { character, messages = [], storyContext, language = 'de', settings = {}, characterId, chatId } = req.body;
     const payload = buildChatPayload({
-      character, messages, language, contextWindowSize: settings.contextWindowSize || 12,
+      character, messages, storyContext, language, contextWindowSize: settings.contextWindowSize || 12,
     });
     const currentUserMessage = [...payload.chatHistory].reverse().find(message => message.role === 'user');
     res.json({

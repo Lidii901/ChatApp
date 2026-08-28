@@ -10,15 +10,15 @@ export interface CharacterBookEntry {
   content: string;
   secondary_keys?: string[];
   comment?: string;
-  insertion_order?: number;
+  insertion_order: number;
   case_sensitive?: boolean;
   name?: string;
   priority?: number;
-  extensions?: Record<string, any>;
-  enabled?: boolean;
+  extensions: Record<string, unknown>;
+  enabled: boolean;
   selective?: boolean;
   constant?: boolean;
-  position?: string;
+  position?: 'before_char' | 'after_char';
 }
 
 export interface CharacterBook {
@@ -27,7 +27,7 @@ export interface CharacterBook {
   scan_depth?: number;
   token_budget?: number;
   recursive_scanning?: boolean;
-  extensions?: Record<string, any>;
+  extensions: Record<string, unknown>;
   entries: CharacterBookEntry[];
 }
 

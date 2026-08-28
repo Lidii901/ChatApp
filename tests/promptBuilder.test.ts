@@ -1,21 +1,22 @@
 import assert from 'node:assert/strict';
 import { buildChatPayload, resolveGreeting, GLOBAL_SYSTEM_PROMPT } from '../src/utils/promptBuilder';
 import { characterCardV2ToCharacter, characterToCharacterCardV2 } from '../src/utils/characterCardV2Converter';
+import { defaultDeanPromptFixture } from './fixtures/defaultDeanPromptFixture';
 
-const base = { name: 'Dean', playerAddressName: 'Lidii', description: 'Dean description', personality: 'Dean personality', scenario: 'A library.', mesExample: '{{char}} greets {{user}}.', memories: [], creatorNotes: 'SECRET NOTES', dominanceLevel: 'level_9_extremely_dominant', flirtBehavior: 'intense', pacing: 'slow_burn' };
+const base = { name: 'Dean', playerAddressName: 'Lidii', description: 'Dean description', personality: 'Dean personality', scenario: 'A library.', mesExample: '{{char}} greets {{user}}.', memories: [], creatorNotes: 'SECRET NOTES', dominanceLevel: 'LEGACY_DOMINANCE', flirtBehavior: 'LEGACY_FLIRT', pacing: 'LEGACY_PACING', writingStyle: 'LEGACY_STYLE', behaviorRules: 'LEGACY_RULES', customInstructions: 'LEGACY_CUSTOM', startBehavior: 'LEGACY_START' };
 const cases: Record<string, unknown> = {};
 const userEn = 'I look up from my book for a moment, then continue reading.';
 const p1 = buildChatPayload({ character: base, language: 'en', messages: [{ role: 'user', content: userEn }] });
 assert.deepEqual(p1.chatHistory.at(-1), { role: 'user', content: userEn });
 assert.match(p1.messages[0].content, /Generate Dean's next reply in English\./);
-assert.doesNotMatch(p1.messages[0].content, /German|Dominance|Flirt|Slow Burn|SECRET NOTES/i);
+assert.doesNotMatch(p1.messages[0].content, /German|LEGACY_|SECRET NOTES/i);
 cases.test1 = p1.messages;
 
 const userDe = 'Ich schaue kurz von meinem Buch auf und lese dann weiter.';
 const p2 = buildChatPayload({ character: base, language: 'de', messages: [{ role: 'user', content: userDe }] });
 assert.deepEqual(p2.chatHistory.at(-1), { role: 'user', content: userDe });
 assert.match(p2.messages[0].content, /Generate Dean's next reply in German\./);
-assert.doesNotMatch(p2.messages[0].content, /English|Dominance|Flirt|Slow Burn/i);
+assert.doesNotMatch(p2.messages[0].content, /English|LEGACY_/i);
 cases.test2 = p2.messages;
 
 const english = { ...base, name: 'EnglishCard', description: 'English description', personality: 'English personality', scenario: 'English scenario', mesExample: '{{char}} says hello.', systemPrompt: 'English system', postHistoryInstructions: 'English post', characterBook: { entries: [{ keys: ['book'], content: 'English lore', enabled: true, insertion_order: 1 }] } };
@@ -31,7 +32,8 @@ cases.test4 = p4.messages;
 assert.equal(resolveGreeting({ ...base, firstMes: 'Hello {{user}}, {{char}} here.' }), 'Hello Lidii, Dean here.');
 assert.equal(resolveGreeting({ ...base, firstMes: 'main', alternateGreetings: ['alt {{char}}'] }, 0), 'alt Dean');
 const p7 = buildChatPayload({ character: { ...base, systemPrompt: 'Before\n{{original}}\nAfter' }, language: 'en', messages: [{ role: 'user', content: 'x' }] });
-assert.match(p7.systemPrompt, new RegExp(`Before\\n${GLOBAL_SYSTEM_PROMPT.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\nAfter`));
+assert.match(p7.systemPrompt, /Before\nWrite Dean's next reply in an immersive roleplay between Dean and Lidii\.\nAfter/);
+assert.doesNotMatch(p7.systemPrompt, /{{(?:char|user|original)}}/);
 cases.test7 = p7.messages;
 const p8 = buildChatPayload({ character: { ...base, postHistoryInstructions: 'Before {{original}} After' }, language: 'en', messages: [{ role: 'user', content: 'x' }] });
 assert.equal(p8.postHistoryInstructions, 'Before  After'); cases.test8 = p8.messages;
@@ -57,6 +59,58 @@ assert.equal(roundtrip.data.character_book?.entries[0].extensions?.entryUnknown,
 assert.equal(roundtrip.data.description, 'D'); assert.equal(roundtrip.data.scenario, 'S'); assert.equal(roundtrip.data.first_mes, 'F'); assert.equal(roundtrip.data.mes_example, 'M');
 assert.match(p1.characterDefinitions, /Dean greets Lidii\./);
 assert.equal(p1.chatHistory.some(m => m.content.includes('greets')), false);
+
+const macroPayload = buildChatPayload({
+  character: { ...base, systemPrompt: '{{summary}} | {{example_dialogue}} | {{personality}} | {{scenario}}' },
+  storyContext: { sceneSummary: 'Existing scene summary' }, language: 'en', messages: [],
+});
+assert.match(macroPayload.systemPrompt, /Existing scene summary \| Dean greets Lidii\. \| Dean personality \| A library\./);
+assert.doesNotMatch(macroPayload.systemPrompt, /LEGACY_/);
+
+const positioned = buildChatPayload({ character: { ...base, characterBook: { extensions: {}, scan_depth: 1, entries: [
+  { keys: [], content: 'BEFORE_LORE', extensions: {}, enabled: true, insertion_order: 2, constant: true, position: 'before_char' },
+  { keys: [], content: 'AFTER_LORE', extensions: {}, enabled: true, insertion_order: 1, constant: true, position: 'after_char' },
+] } }, messages: [], language: 'en' });
+const positionedSystem = positioned.messages[0].content;
+assert.ok(positionedSystem.indexOf('BEFORE_LORE') < positionedSystem.indexOf('Dean description'));
+assert.ok(positionedSystem.indexOf('AFTER_LORE') > positionedSystem.indexOf('Dean greets Lidii.'));
+
+const zeroDepth = buildChatPayload({ character: { ...base, characterBook: { extensions: {}, scan_depth: 0, entries: [
+  { keys: ['dragon'], content: 'SHOULD_NOT_ACTIVATE', extensions: {}, enabled: true, insertion_order: 0 },
+] } }, messages: [{ role: 'user', content: 'dragon' }] });
+assert.equal(zeroDepth.activatedCharacterBookEntries.length, 0);
+
+const independentDepth = buildChatPayload({ character: { ...base, characterBook: { extensions: {}, scan_depth: 3, entries: [
+  { keys: ['old-trigger'], content: 'FOUND_OUTSIDE_PAYLOAD_WINDOW', extensions: {}, enabled: true, insertion_order: 0 },
+] } }, contextWindowSize: 1, messages: [
+  { role: 'user', content: 'old-trigger' }, { role: 'assistant', content: 'middle' }, { role: 'user', content: 'latest' },
+] });
+assert.equal(independentDepth.chatHistory.length, 1);
+assert.equal(independentDepth.activatedCharacterBookEntries[0]?.content, 'FOUND_OUTSIDE_PAYLOAD_WINDOW');
+
+const recursive = buildChatPayload({ character: { ...base, characterBook: { extensions: {}, scan_depth: 1, recursive_scanning: true, entries: [
+  { keys: ['first-key'], content: 'second-key appears here', extensions: {}, enabled: true, insertion_order: 0 },
+  { keys: ['second-key'], content: 'RECURSIVE_LORE', extensions: {}, enabled: true, insertion_order: 1 },
+] } }, messages: [{ role: 'user', content: 'first-key' }] });
+assert.deepEqual(recursive.activatedCharacterBookEntries.map(entry => entry.content), ['second-key appears here', 'RECURSIVE_LORE']);
+
+const legacyOnlyExport = characterToCharacterCardV2({ ...base, id: 'legacy', avatarUrl: '', age: '', appearance: 'A', background: '', relationshipToPlayer: '', toneOfVoice: '', typicalPhrases: '', addressMode: 'auto', nicknames: '', thoughtsEnabled: true, initiativeLevel: 'medium', plotInitiative: 'medium', dynamics: [], humorLevel: 'playful', humorStyles: [], imageFrequency: 'rare', imageStyleDescription: '', memories: [{ id: 'legacy-memory', category: 'detail', content: 'Do not export as lore', createdAt: 1 }], createdAt: 1, updatedAt: 1 } as any);
+assert.equal(legacyOnlyExport.data.character_book, undefined);
+
+const imagePayload = buildChatPayload({ character: base, language: 'en', messages: [{ role: 'user', content: 'I look at you.', image: { url: 'data:image/png;base64,x', caption: 'a page' } }] });
+assert.deepEqual(imagePayload.messages.slice(1), [
+  { role: 'system', content: '[Lidii attached an image/photo: a page]' },
+  { role: 'user', content: 'I look at you.' },
+]);
+assert.deepEqual(imagePayload.messages, [{ role: 'system', content: imagePayload.messages[0].content }, ...imagePayload.chatHistory]);
+
+const defaultDeanPayload = buildChatPayload({ character: defaultDeanPromptFixture, language: 'de', messages: [] });
+for (const hiddenLegacyValue of [
+  defaultDeanPromptFixture.dominanceLevel, defaultDeanPromptFixture.flirtBehavior,
+  defaultDeanPromptFixture.pacing, defaultDeanPromptFixture.writingStyle,
+  defaultDeanPromptFixture.behaviorRules, defaultDeanPromptFixture.customInstructions,
+  defaultDeanPromptFixture.startBehavior,
+]) assert.doesNotMatch(defaultDeanPayload.messages[0].content, new RegExp(hiddenLegacyValue));
 console.log(JSON.stringify(cases, null, 2));
 console.log('All 14 production prompt/converter assertions passed.');
 

@@ -6,10 +6,12 @@ export const GLOBAL_SYSTEM_PROMPT = "Write {{char}}'s next reply in an immersive
 export const GLOBAL_POST_HISTORY = '';
 
 export function applyPromptMacros(template: string, values: Record<string, string | undefined>): string {
-  const supported = ['char', 'user', 'personality', 'scenario', 'memory', 'example_dialogue', 'summary', 'profile', 'original'];
+  // Expand original once first, so macros contained by the original text are resolved below.
+  let result = (template || '').replace(/{{original}}/gi, values.original ?? '');
+  const supported = ['char', 'user', 'personality', 'scenario', 'memory', 'example_dialogue', 'summary', 'profile'];
   return supported.reduce(
     (text, macro) => text.replace(new RegExp(`{{${macro}}}`, 'gi'), values[macro] ?? ''),
-    template || '',
+    result,
   );
 }
 
@@ -24,23 +26,40 @@ export interface ActivatedLoreEntry extends CharacterBookEntry {
   priority: number;
 }
 
-/** Character-book budgeting uses a documented approximation, not model-specific tokenization. */
+/** Internal approximate token estimate; not model-specific tokenization or a Chub-defined exact token count. */
 export function approximateTokens(text: string): number {
   return Math.ceil(text.length / 4);
+}
+
+function entryMatches(entry: CharacterBookEntry, text: string): boolean {
+  const sensitive = entry.case_sensitive === true;
+  const primary = (entry.keys || []).some(key => matchesWholeWord(text, String(key), sensitive));
+  const secondary = (entry.secondary_keys || []).some(key => matchesWholeWord(text, String(key), sensitive));
+  return entry.constant === true || (primary && (!entry.selective || secondary));
 }
 
 export function activateCharacterBook(book: CharacterBook | undefined, history: PromptMessage[]): ActivatedLoreEntry[] {
   if (!book?.entries?.length) return [];
   const depth = Number.isInteger(book.scan_depth) && (book.scan_depth as number) >= 0 ? book.scan_depth as number : 4;
-  const scanText = history.slice(-depth).map(message => message.content).join('\n');
-  let active = book.entries.flatMap((entry, index) => {
-    if (!entry?.content?.trim() || entry.enabled === false) return [];
-    const sensitive = entry.case_sensitive === true;
-    const primary = (entry.keys || []).some(key => matchesWholeWord(scanText, String(key), sensitive));
-    const secondary = (entry.secondary_keys || []).some(key => matchesWholeWord(scanText, String(key), sensitive));
-    if (entry.constant !== true && !(primary && (!entry.selective || secondary))) return [];
-    return [{ ...entry, insertion_order: entry.insertion_order ?? index, priority: entry.priority ?? 0 }];
-  });
+  const scanText = depth === 0 ? '' : history.slice(-depth).map(message => message.content).join('\n');
+  const active: ActivatedLoreEntry[] = [];
+  const activatedIndexes = new Set<number>();
+  let recursiveText = scanText;
+
+  do {
+    const newlyActivated: Array<{ entry: CharacterBookEntry; index: number }> = [];
+    book.entries.forEach((entry, index) => {
+      if (activatedIndexes.has(index) || !entry?.content?.trim() || entry.enabled === false) return;
+      if (!entryMatches(entry, recursiveText)) return;
+      newlyActivated.push({ entry, index });
+    });
+    newlyActivated.forEach(({ entry, index }) => {
+      activatedIndexes.add(index);
+      active.push({ ...entry, insertion_order: entry.insertion_order ?? index, priority: entry.priority ?? 0 });
+      recursiveText += `\n${entry.content}`;
+    });
+    if (!book.recursive_scanning || newlyActivated.length === 0) break;
+  } while (activatedIndexes.size < book.entries.length);
 
   const budget = book.token_budget;
   if (typeof budget === 'number' && budget >= 0) {
@@ -57,56 +76,81 @@ function cardValue(character: any, authoritative: string, legacy: string): strin
   return String(character?.[authoritative] || character?.[legacy] || '').trim();
 }
 
-export function resolveSystemPrompt(character: any, language: 'de' | 'en'): string {
+function macroValues(character: any, storyContext: any = {}) {
   const char = character?.name?.trim() || 'Character';
   const user = character?.playerAddressName?.trim() || 'User';
-  const raw = character?.systemPrompt?.trim() || GLOBAL_SYSTEM_PROMPT;
-  const resolved = applyPromptMacros(raw, {
-    char, user, original: GLOBAL_SYSTEM_PROMPT, personality: character?.personality,
+  const example = applyPromptMacros(cardValue(character, 'mesExample', 'exampleDialogues'), { char, user });
+  const memory = Array.isArray(storyContext?.memories)
+    ? storyContext.memories.map((item: any) => item?.content).filter(Boolean).join('\n')
+    : '';
+  return {
+    char, user,
+    personality: String(character?.personality || ''),
     scenario: cardValue(character, 'scenario', 'startPlot'),
-  });
+    example_dialogue: example,
+    summary: String(storyContext?.sceneSummary || ''),
+    memory,
+    profile: String(storyContext?.profile || ''),
+  };
+}
+
+export function resolveSystemPrompt(character: any, language: 'de' | 'en', storyContext?: any): string {
+  const values = macroValues(character, storyContext);
+  const raw = character?.systemPrompt?.trim() || GLOBAL_SYSTEM_PROMPT;
+  const resolved = applyPromptMacros(raw, { ...values, original: GLOBAL_SYSTEM_PROMPT });
   const languageInstruction = language === 'en'
-    ? `Generate ${char}'s next reply in English.`
-    : `Generate ${char}'s next reply in German.`;
+    ? `Generate ${values.char}'s next reply in English.`
+    : `Generate ${values.char}'s next reply in German.`;
   return `${resolved.trim()}\n${languageInstruction}`;
 }
 
-export function resolvePostHistory(character: any): string {
+export function resolvePostHistory(character: any, storyContext?: any): string {
   return applyPromptMacros(character?.postHistoryInstructions?.trim() || GLOBAL_POST_HISTORY, {
-    char: character?.name?.trim() || 'Character',
-    user: character?.playerAddressName?.trim() || 'User',
-    original: GLOBAL_POST_HISTORY,
-    personality: character?.personality,
-    scenario: cardValue(character, 'scenario', 'startPlot'),
+    ...macroValues(character, storyContext), original: GLOBAL_POST_HISTORY,
   }).trim();
 }
 
-export function buildCharacterDefinitions(character: any, activated: ActivatedLoreEntry[]): string {
-  const char = character?.name?.trim() || 'Character';
-  const user = character?.playerAddressName?.trim() || 'User';
-  const fields = [
+export function buildCharacterDefinitions(character: any): string {
+  const values = macroValues(character);
+  return [
     cardValue(character, 'description', 'appearance'),
-    String(character?.personality || '').trim(),
-    cardValue(character, 'scenario', 'startPlot'),
-    ...activated.map(entry => entry.content.trim()),
-    applyPromptMacros(cardValue(character, 'mesExample', 'exampleDialogues'), { char, user }),
-  ];
-  return fields.filter(Boolean).join('\n\n');
+    values.personality,
+    values.scenario,
+    values.example_dialogue,
+  ].filter(Boolean).join('\n\n');
+}
+
+function formatHistory(messages: any[], language: 'de' | 'en', playerAddress: string): PromptMessage[] {
+  return messages.flatMap(message => {
+    const role = message.role === 'lidii' || message.role === 'user' ? 'user' : message.role === 'system' ? 'system' : 'assistant';
+    const result: PromptMessage[] = [];
+    if (role === 'user' && message.image?.url) {
+      const caption = message.image.caption ? `: ${message.image.caption}` : '';
+      result.push({ role: 'system', content: language === 'de'
+        ? `[${playerAddress} hat ein Bild/Foto angehängt${caption}]`
+        : `[${playerAddress} attached an image/photo${caption}]` });
+    }
+    result.push({ role, content: String(message.content ?? '') });
+    return result;
+  });
 }
 
 export function buildChatPayload(input: {
-  character: any; messages: any[]; language?: 'de' | 'en'; contextWindowSize?: number;
+  character: any; messages: any[]; storyContext?: any; language?: 'de' | 'en'; contextWindowSize?: number;
 }) {
-  const { character, language = 'de' } = input;
-  const history: PromptMessage[] = (input.messages || []).slice(-(input.contextWindowSize || 12)).map(message => ({
-    role: message.role === 'lidii' || message.role === 'user' ? 'user' : message.role === 'system' ? 'system' : 'assistant',
-    content: String(message.content ?? ''),
-  }));
-  const activatedCharacterBookEntries = activateCharacterBook(character?.characterBook, history);
-  const systemPrompt = resolveSystemPrompt(character, language);
-  const characterDefinitions = buildCharacterDefinitions(character, activatedCharacterBookEntries);
-  const postHistoryInstructions = resolvePostHistory(character);
-  const systemContent = [systemPrompt, characterDefinitions].filter(Boolean).join('\n\n');
+  const { character, language = 'de', storyContext } = input;
+  const playerAddress = character?.playerAddressName?.trim() || 'User';
+  const fullHistory = formatHistory(input.messages || [], language, playerAddress);
+  const loreScanHistory = fullHistory.filter(message => message.role !== 'system');
+  const activatedCharacterBookEntries = activateCharacterBook(character?.characterBook, loreScanHistory);
+  const contextWindowSize = input.contextWindowSize || 12;
+  const history = formatHistory((input.messages || []).slice(-contextWindowSize), language, playerAddress);
+  const systemPrompt = resolveSystemPrompt(character, language, storyContext);
+  const characterDefinitions = buildCharacterDefinitions(character);
+  const beforeLore = activatedCharacterBookEntries.filter(entry => entry.position === 'before_char').map(entry => entry.content.trim()).join('\n\n');
+  const afterLore = activatedCharacterBookEntries.filter(entry => entry.position !== 'before_char').map(entry => entry.content.trim()).join('\n\n');
+  const postHistoryInstructions = resolvePostHistory(character, storyContext);
+  const systemContent = [systemPrompt, beforeLore, characterDefinitions, afterLore].filter(Boolean).join('\n\n');
   const messages: PromptMessage[] = [{ role: 'system', content: systemContent }, ...history];
   // The card defines this field's semantics, but not a mandatory OpenAI-compatible role.
   if (postHistoryInstructions) messages.push({ role: 'system', content: postHistoryInstructions });

@@ -1,5 +1,5 @@
 import { Character, MemoryItem } from '../types';
-import { CharacterCardV2, CharacterCardV2Data, CharacterBook, CharacterBookEntry } from '../types/characterCardV2';
+import { CharacterCardV2, CharacterCardV2Data } from '../types/characterCardV2';
 
 /**
  * Converts a CharacterCardV2 (or V2 Data payload) into internal Character format
@@ -82,20 +82,6 @@ export function characterCardV2ToCharacter(card: CharacterCardV2 | CharacterCard
  * Converts internal Character object into a strict Character Card V2 compliant JSON object
  */
 export function characterToCharacterCardV2(character: Character): CharacterCardV2 {
-  const bookEntries: CharacterBookEntry[] = (character.memories || []).map((m, idx) => ({
-    id: idx + 1,
-    keys: m.keys && m.keys.length > 0 ? m.keys : [m.category || 'detail'],
-    content: m.content,
-    enabled: true,
-    insertion_order: idx + 1,
-  }));
-
-  const character_book: CharacterBook = character.characterBook || {
-    name: `${character.name} Lorebook`,
-    description: `Lore and memory entries for ${character.name}`,
-    entries: bookEntries,
-  };
-
   const v2Data: CharacterCardV2Data = {
     name: character.name || '',
     description: (character.description || character.appearance || '').trim(),
@@ -107,7 +93,7 @@ export function characterToCharacterCardV2(character: Character): CharacterCardV
     system_prompt: character.systemPrompt || '',
     post_history_instructions: character.postHistoryInstructions || '',
     alternate_greetings: character.alternateGreetings || [],
-    character_book,
+    ...(character.characterBook ? { character_book: character.characterBook } : {}),
     tags: character.tags || [],
     creator: character.creator || '',
     character_version: character.characterVersion || '1.0',

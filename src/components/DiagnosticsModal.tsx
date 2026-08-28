@@ -47,6 +47,8 @@ export const DiagnosticsModal: React.FC<DiagnosticsModalProps> = ({
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            characterId: activeCharacter.id,
+            chatId: activeChat?.id,
             character: activeCharacter,
             messages: activeChat?.messages || [],
             storyContext: activeChat?.storyContext,
@@ -95,7 +97,7 @@ export const DiagnosticsModal: React.FC<DiagnosticsModalProps> = ({
   const systemPrompt = activeCharacter?.systemPrompt || '(Standard leer gemäss Chub / CCv2 Spezifikation)';
   const postHistory = activeCharacter?.postHistoryInstructions || '(Standard leer gemäss Chub / CCv2 Spezifikation)';
   const exampleDialogue = activeCharacter?.mesExample || activeCharacter?.exampleDialogues || '(Keine mes_example definiert)';
-  const characterBook = activeCharacter?.characterBook || activeCharacter?.memories || [];
+  const characterBook = activeCharacter?.characterBook;
   const messagesCount = activeChat?.messages?.length || 0;
   const lastUserMsg = activeChat?.messages
     ?.slice()
@@ -238,8 +240,16 @@ export const DiagnosticsModal: React.FC<DiagnosticsModalProps> = ({
               <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-3 space-y-2">
                 <div className="text-xs font-bold text-rose-400 uppercase">5. Character Book & Example Dialogue (mes_example)</div>
                 <div className="text-[11px] text-zinc-400">
-                  Character Book Einträge: <span className="text-zinc-200 font-semibold">{Array.isArray(characterBook) ? characterBook.length : 0}</span>
+                  Character Book Einträge: <span className="text-zinc-200 font-semibold">{characterBook?.entries?.length || 0}</span>
                 </div>
+                <div className="text-[11px] text-zinc-400">
+                  Aktiviert: <span className="text-zinc-200 font-semibold">{backendInspection?.activatedCharacterBookEntries?.length || 0}</span>
+                </div>
+                {(backendInspection?.activatedCharacterBookEntries || []).map((entry: any, index: number) => (
+                  <pre key={entry.id ?? index} className="rounded bg-zinc-950 p-2 text-[11px] text-zinc-300 border border-zinc-800 whitespace-pre-wrap">
+                    [{entry.position || 'after_char'} / {entry.insertion_order}] {entry.content}
+                  </pre>
+                ))}
                 <div>
                   <div className="text-[10px] text-zinc-400 uppercase font-mono">mes_example:</div>
                   <pre className="mt-0.5 rounded bg-zinc-950 p-2 text-[11px] font-mono text-zinc-300 border border-zinc-800 whitespace-pre-wrap max-h-32 overflow-y-auto">
@@ -283,9 +293,9 @@ export const DiagnosticsModal: React.FC<DiagnosticsModalProps> = ({
                   )}
                 </div>
 
-                {backendInspection?.breakdown?.fullMessagesPayload ? (
+                {backendInspection?.finalMessages ? (
                   <div className="space-y-2 pt-1">
-                    {backendInspection.breakdown.fullMessagesPayload.map((msg: any, idx: number) => (
+                    {backendInspection.finalMessages.map((msg: any, idx: number) => (
                       <div
                         key={idx}
                         className={`rounded-lg border p-2.5 space-y-1 ${
