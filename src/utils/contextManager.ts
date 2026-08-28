@@ -23,7 +23,6 @@ export function loadPendingJobs(): PendingJobInfo[] {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
-        // Filter out any stale jobs older than 1 hour
         const now = Date.now();
         return parsed.filter((j: any) => j && j.id && now - (j.createdAt || 0) < 3600000);
       }
@@ -62,21 +61,73 @@ export const DEFAULT_SETTINGS: ModelSettings = {
 };
 
 /**
- * Returns the effective character for a specific chat session by overlaying
- * any chat-specific character settings (Dominance, Dynamics, Humor, Style, etc.)
- * over the base character object.
+ * One-time compatibility bridge for characters created by older ChatApp versions.
+ * The production prompt builder stays Character Card V2-centric; legacy profile text
+ * is consolidated into visible V2 fields before the character reaches that builder.
  */
-export function getEffectiveCharacter(character: Character, chat?: ChatSession): Character {
-  if (!character) return DEFAULT_CHARACTERS[0];
-  if (!chat || !chat.characterSettings) return character;
+export function normalizeLegacyCharacterToV2(character: Character): Character {
+  const hasDirectV2Fields =
+    character.description !== undefined ||
+    character.scenario !== undefined ||
+    character.firstMes !== undefined ||
+    character.mesExample !== undefined;
+
+  if (hasDirectV2Fields) return character;
+
+  const descriptionSections = [
+    character.appearance,
+    character.background ? `Background:\n${character.background}` : '',
+    character.relationshipToPlayer
+      ? `Relationship / prior context with {{user}}:\n${character.relationshipToPlayer}`
+      : '',
+    character.writingStyle ? `Writing style:\n${character.writingStyle}` : '',
+    character.toneOfVoice ? `Voice / tone:\n${character.toneOfVoice}` : '',
+    character.typicalPhrases ? `Typical speech examples:\n${character.typicalPhrases}` : '',
+    character.startBehavior ? `Behavior:\n${character.startBehavior}` : '',
+    character.dynamics?.length ? `Relationship / role dynamics:\n${character.dynamics.join(', ')}` : '',
+    character.humorStyles?.length ? `Humor / tonal traits:\n${character.humorStyles.join(', ')}` : '',
+    character.dominanceLevel ? `Legacy interpersonal style: ${character.dominanceLevel}` : '',
+    character.pacing ? `Legacy pacing preference: ${character.pacing}` : '',
+    character.flirtBehavior ? `Legacy flirt behavior: ${character.flirtBehavior}` : '',
+    character.plotInitiative || character.initiativeLevel
+      ? `Legacy plot initiative: ${character.plotInitiative || character.initiativeLevel}`
+      : '',
+  ].filter(Boolean);
+
+  const legacyInstructions = [character.behaviorRules, character.customInstructions]
+    .filter(value => typeof value === 'string' && value.trim())
+    .join('\n\n');
 
   return {
     ...character,
+    description: descriptionSections.join('\n\n'),
+    scenario: character.startPlot || '',
+    firstMes: character.startPrompt || '',
+    mesExample: character.exampleDialogues || '',
+    postHistoryInstructions:
+      character.postHistoryInstructions !== undefined
+        ? character.postHistoryInstructions
+        : legacyInstructions,
+  };
+}
+
+/**
+ * Returns the effective character for a specific chat session by overlaying
+ * prompt-effective chat-specific Character Card V2 fields over the base character.
+ * Old saved override fields are retained for data compatibility but are no longer
+ * treated as a hidden parallel prompt system.
+ */
+export function getEffectiveCharacter(character: Character, chat?: ChatSession): Character {
+  if (!character) return normalizeLegacyCharacterToV2(DEFAULT_CHARACTERS[0]);
+  const normalized = normalizeLegacyCharacterToV2(character);
+  if (!chat || !chat.characterSettings) return normalized;
+
+  return {
+    ...normalized,
     ...chat.characterSettings,
-    // Ensure critical core identifiers stay intact
-    id: character.id,
-    name: character.name,
-    avatarUrl: character.avatarUrl,
+    id: normalized.id,
+    name: normalized.name,
+    avatarUrl: normalized.avatarUrl,
   };
 }
 
@@ -86,8 +137,8 @@ export function loadSavedCharacters(): Character[] {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        // Sanitize default characters so any stale chase/Bronx startPrompt from older versions is cleanly reset
         return parsed.map((char: Character) => {
+          let cleaned = char;
           if (char.id === 'char-dean') {
             const canonicalDean = DEFAULT_CHARACTERS.find((c) => c.id === 'char-dean');
             if (
@@ -98,7 +149,7 @@ export function loadSavedCharacters(): Character[] {
                 char.startPrompt.includes('Garten') ||
                 char.startPrompt.includes('Collector'))
             ) {
-              return {
+              cleaned = {
                 ...char,
                 startPrompt: canonicalDean.startPrompt,
                 startPlot: canonicalDean.startPlot,
@@ -109,14 +160,14 @@ export function loadSavedCharacters(): Character[] {
               };
             }
           }
-          return char;
+          return normalizeLegacyCharacterToV2(cleaned);
         });
       }
     }
   } catch (e) {
     console.error('Failed to load characters from localStorage', e);
   }
-  return DEFAULT_CHARACTERS;
+  return DEFAULT_CHARACTERS.map(normalizeLegacyCharacterToV2);
 }
 
 export function saveCharacters(characters: Character[]): void {
@@ -153,7 +204,6 @@ export function loadSavedChats(): ChatSession[] {
     if (raw !== null) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
-        // Filter/sanitize old stale chase messages from default chats
         return parsed.map((chat: ChatSession) => {
           if (chat.id === 'chat-dean-1') {
             const hasOldChase =
@@ -282,16 +332,14 @@ export function importFullRPState(jsonString: string): {
     throw new Error('Ungültiges Dateiformat.');
   }
 
-  // Version 2 structure
   if (Array.isArray(parsed.characters) && Array.isArray(parsed.chats)) {
     return {
-      characters: parsed.characters,
+      characters: parsed.characters.map(normalizeLegacyCharacterToV2),
       chats: parsed.chats,
       settings: parsed.settings || DEFAULT_SETTINGS,
     };
   }
 
-  // Legacy Version 1 structure fallback
   if (Array.isArray(parsed.messages)) {
     return {
       legacyMessages: parsed.messages,
@@ -302,4 +350,3 @@ export function importFullRPState(jsonString: string): {
 
   throw new Error('Das Dokument enthält weder Charaktere noch Chat-Nachrichten.');
 }
-

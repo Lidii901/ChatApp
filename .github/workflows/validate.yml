@@ -33,3 +33,6 @@ jobs:
 
       - name: Language and Chat Memory regression tests
         run: npx tsx tests/chubLanguageRegression.test.ts
+
+      - name: Legacy Character Card migration tests
+        run: npx tsx tests/legacyCharacterMigration.test.ts
