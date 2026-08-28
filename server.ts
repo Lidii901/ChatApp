@@ -46,123 +46,409 @@ setInterval(() => {
   }
 }, 300000);
 
-// Helper: Build System Prompt for any Character
+// Helper: Get Dominance Level Description
+function getDominanceDescription(level?: string, isGerman = true): string {
+  switch (level) {
+    case 'level_1_very_restrained':
+      return isGerman
+        ? 'Stufe 1 (Sehr zurückhaltend): Extrem passiv, behutsam und vorsichtig. Überlässt der Spielerfigur die volle Führung und Initiative.'
+        : 'Level 1 (Very Restrained): Highly passive, gentle and cautious. Leaves full leadership and initiative to the player character.';
+    case 'level_2_gentle':
+      return isGerman
+        ? 'Stufe 2 (Sanft): Weich, respektvoll, rücksichtsvoll. Reagiert feinfühlig und setzt sanfte Impulse ohne Druck.'
+        : 'Level 2 (Gentle): Soft, respectful, considerate. Responds delicately and offers gentle cues without pressure.';
+    case 'level_3_lightly_leading':
+      return isGerman
+        ? 'Stufe 3 (Leicht führend): Schlägt charmant Richtungen vor, bleibt aufmerksam und kooperativ.'
+        : 'Level 3 (Lightly Leading): Suggests directions charismatically, remains attentive and cooperative.';
+    case 'level_4_confident':
+      return isGerman
+        ? 'Stufe 4 (Selbstbewusst): Ruhig, sicher im eigenen Auftreten, interagiert auf Augenhöhe mit spürbarer Präsenz.'
+        : 'Level 4 (Confident): Calm, assured in his actions, interacts on eye level with steady presence.';
+    case 'level_5_dominant':
+    case 'dominant':
+      return isGerman
+        ? 'Stufe 5 (Dominant): Bestimmt, selbstsicher, übernimmt im Dialog und im eigenen Verhalten die Führung, ohne die Spielerin zu kontrollieren.'
+        : 'Level 5 (Dominant): Assertive, confident, leads in dialogue and own demeanour without controlling the player.';
+    case 'level_6_strongly_dominant':
+      return isGerman
+        ? 'Stufe 6 (Stark dominant): Kompromisslos, eindringlich, hohe psychologische Präsenz und feste eigene Haltung.'
+        : 'Level 6 (Strongly Dominant): Uncompromising, commanding, high psychological presence and unwavering personal posture.';
+    case 'level_7_controlling':
+      return isGerman
+        ? 'Stufe 7 (Kontrollierend): Stark fordernd und intensiv im eigenen Tonfall und Auftreten.'
+        : 'Level 7 (Controlling): Strongly demanding and intense in tone and personal presence.';
+    case 'level_8_very_controlling':
+      return isGerman
+        ? 'Stufe 8 (Sehr kontrollierend): Hohe Intensität, unerbittlich, besitzergreifend und eindringlich im eigenen Wesen.'
+        : 'Level 8 (Very Controlling): High psychological intensity, relentless and intense in demeanour.';
+    case 'level_9_extremely_dominant':
+      return isGerman
+        ? 'Stufe 9 (Extrem dominant): Maximale psychologische Präsenz, unerschütterliche Selbstsicherheit, absolute Entschlossenheit und dominanter Tonfall im EIGENEN Handeln. WICHTIG: Dominanz 9 bedeutet niemals, Lidii gegen ihren Willen anzufassen, festzuhalten, einzuengen oder ihre Gefühle zu bestimmen!'
+        : 'Level 9 (Extremely Dominant): Maximum psychological presence, unshakeable confidence, absolute resolve and dominant tone in his OWN actions. IMPORTANT: Dominance 9 never means forcing physical contact, restraining Lidii, or dictating her feelings!';
+    case 'submissive':
+      return isGerman ? 'Unterwürfig, folgsam und nachgiebig.' : 'Submissive, obedient and yielding.';
+    case 'restrained':
+      return isGerman ? 'Zurückhaltend und beherrscht.' : 'Restrained and guarded.';
+    case 'balanced':
+    default:
+      return isGerman ? 'Ausgewogen auf Augenhöhe.' : 'Balanced on eye level.';
+  }
+}
+
+// Helper: Get Pacing / Slow Burn Description
+function getPacingDescription(pacing?: string, isGerman = true): string {
+  switch (pacing) {
+    case 'fast':
+      return isGerman
+        ? 'Schneller Handlungsfluss – Zügigere Szenenwechsel und raschere Entwicklung.'
+        : 'Fast pacing – Quicker scene progression.';
+    case 'balanced':
+      return isGerman
+        ? 'Ausgewogenes Erzähltempo – Harmonische Mischung aus Szene, Gespräch und Entwicklung.'
+        : 'Balanced pacing – Harmonious mix of setting, dialogue, and progression.';
+    case 'slow_burn':
+    default:
+      return isGerman
+        ? 'Slow Burn (Echtes literarisches Slow Burn) – Sehr langsame Entwicklung, kleine Begegnungen, natürliche Pausen, Blicke, kurze Worte, Raumatmosphäre, subtile Ungewissheit und langsam wachsende Vertrautheit. KEINE sofortige körperliche Nähe, keine sofortige Intimität, keine sofortige Enthüllung aller Geheimnisse, keine künstlich erzwungene Dramatik.'
+        : 'Slow Burn (True literary slow burn) – Gradual development, small encounters, natural pauses, glances, brief dialogue, spatial atmosphere, subtle uncertainty and slowly building tension. NO immediate physical contact, no instant intimacy, no rushed grand revelations.';
+  }
+}
+
+// Helper: Get Plot Initiative Description
+function getPlotInitiativeDescription(initiative?: string, isGerman = true): string {
+  switch (initiative) {
+    case 'low':
+      return isGerman
+        ? 'Niedrig (Reaktiv) – Reagiert hauptsächlich bedacht auf Lidiis Aktionen und entwickelt die Situation nur vorsichtig weiter.'
+        : 'Low (Reactive) – Responds thoughtfully to Lidii and develops situations cautiously.';
+    case 'high':
+      return isGerman
+        ? 'Hoch (Proaktiv in Umwelt & Ereignissen) – Bringt häufiger neue externe Ereignisse, Umgebungswechsel, Beobachtungen oder Gesprächsanlässe ein. ACHTUNG: Auch bei hoher Plot-Initiative wird Lidii NIEMALS gesteuert oder zu Handlungen gezwungen!'
+        : 'High (Proactive in environment & external events) – Frequently introduces new external events, environmental changes or topics. NOTE: Even with high initiative, Lidii is NEVER controlled or forced into actions!';
+    case 'medium':
+    default:
+      return isGerman
+        ? 'Mittel (Ausgewogen) – Bringt gelegentlich neue Situationen, Beobachtungen oder Gesprächsanlässe ein und lässt der Szene natürlichen Raum.'
+        : 'Medium (Balanced) – Flexibly alternates between introducing new cues and attentive reactions.';
+  }
+}
+
+// Helper: Get Flirt Behavior Description
+function getFlirtDescription(flirt?: string, isGerman = true): string {
+  switch (flirt) {
+    case 'intense':
+      return isGerman
+        ? 'Intensiv, knisternd, spürbare Anziehung im Tonfall und Blick, herausfordernd.'
+        : 'Intense, magnetic attraction in gaze and voice, challenging.';
+    case 'playful':
+      return isGerman
+        ? 'Spielerisch, neckend, schelmisch und charmant.'
+        : 'Playful, teasing, bantering and charming.';
+    case 'subtle':
+      return isGerman
+        ? 'Subtil, verhalten, feine Andeutungen und leise Nuancen.'
+        : 'Subtle, understated, delicate hints and nuance.';
+    case 'none':
+    default:
+      return isGerman
+        ? 'Kein Flirt, rein sachlich, distanziert oder rein geschäftlich.'
+        : 'No flirtation, purely objective or distant.';
+  }
+}
+
+// ======================================================================
+// CHUB AI / CHARACTER CARD V2 PROMPTING ENGINE SPECIFICATION
+// Reference: https://docs.chub.ai/docs/advanced-setups/prompting
+// Reference: https://github.com/malfoyslastname/character-card-spec-v2/blob/main/spec_v2.md
+// ======================================================================
+
+// Standard global system prompt (documented Chub AI canonical Main System Prompt)
+// Reference: https://docs.chub.ai/docs/advanced-setups/prompting
+function getGlobalDefaultSystemPrompt(): string {
+  return "Write {{char}}'s next reply in an immersive roleplay between {{char}} and {{user}}.";
+}
+
+// Standard global post-history instructions (default in pure Chub AI is empty unless specified by card/preset)
+function getGlobalDefaultPostHistory(): string {
+  return '';
+}
+
+// Helper: Apply Chub Prompt Macros
+// Supported macros: {{char}}, {{user}}, {{personality}}, {{scenario}}, {{memory}}, {{example_dialogue}}, {{summary}}, {{profile}}, {{date}}, {{time}}, {{idle_duration}}, {{original}}
+function applyPromptMacros(
+  template: string,
+  variables: {
+    charName: string;
+    playerAddress: string;
+    personality?: string;
+    scenario?: string;
+    memory?: string;
+    exampleDialogue?: string;
+    summary?: string;
+    profile?: string;
+    originalSystemPrompt?: string;
+    originalPostHistory?: string;
+    idleDuration?: string;
+  }
+): string {
+  if (!template) return '';
+  let result = template;
+
+  if (variables.originalSystemPrompt !== undefined) {
+    result = result.replace(/{{original}}/gi, variables.originalSystemPrompt);
+  }
+  if (variables.originalPostHistory !== undefined) {
+    result = result.replace(/{{original}}/gi, variables.originalPostHistory);
+  }
+
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('de-DE');
+  const timeStr = now.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+  const idleStr = variables.idleDuration || '0 minutes';
+
+  result = result
+    .replace(/{{char}}/gi, variables.charName)
+    .replace(/{{user}}/gi, variables.playerAddress)
+    .replace(/{{personality}}/gi, variables.personality || '')
+    .replace(/{{scenario}}/gi, variables.scenario || '')
+    .replace(/{{memory}}/gi, variables.memory || '')
+    .replace(/{{example_dialogue}}/gi, variables.exampleDialogue || '')
+    .replace(/{{summary}}/gi, variables.summary || '')
+    .replace(/{{profile}}/gi, variables.profile || '')
+    .replace(/{{date}}/gi, dateStr)
+    .replace(/{{time}}/gi, timeStr)
+    .replace(/{{idle_duration}}/gi, idleStr);
+
+  return result;
+}
+
+// Helper: Format Example Dialogues for Character Card V2 (<START> blocks)
+function formatExampleDialogues(raw: string | undefined, charName: string, playerAddress: string): string {
+  if (!raw || !raw.trim()) return '';
+  return raw
+    .replace(/{{char}}/gi, charName)
+    .replace(/{{user}}/gi, playerAddress)
+    .trim();
+}
+
+// Helper: Context-Aware Lorebook / Character Book selection based on CCv2 & Chub specs
+function selectRelevantLore(
+  charMemories: any[] | undefined,
+  chatMemories: any[] | undefined,
+  contextText: string,
+  isGerman: boolean,
+  maxEntries = 8
+): string {
+  const allEntries: Array<{ content: string; priority: number; insertionOrder: number }> = [];
+  const lowerContext = (contextText || '').toLowerCase();
+
+  // 1. Process character lorebook entries (Character Book)
+  if (Array.isArray(charMemories)) {
+    for (let i = 0; i < charMemories.length; i++) {
+      const m = charMemories[i];
+      if (!m || !m.content) continue;
+      if (m.enabled === false) continue;
+
+      let isTriggered = false;
+      const priority = typeof m.priority === 'number' ? m.priority : 0;
+      const insertionOrder = typeof m.insertion_order === 'number' ? m.insertion_order : i;
+
+      if (m.constant === true) {
+        isTriggered = true;
+      } else if (Array.isArray(m.keys) && m.keys.length > 0) {
+        const isCaseSensitive = m.case_sensitive === true;
+        const textToSearch = isCaseSensitive ? contextText : lowerContext;
+
+        const primaryMatch = m.keys.some((k: any) => {
+          if (!k) return false;
+          const keyStr = isCaseSensitive ? String(k) : String(k).toLowerCase();
+          return textToSearch.includes(keyStr);
+        });
+
+        if (primaryMatch) {
+          if (m.selective && Array.isArray(m.secondary_keys) && m.secondary_keys.length > 0) {
+            const secondaryMatch = m.secondary_keys.some((sk: any) => {
+              if (!sk) return false;
+              const sKeyStr = isCaseSensitive ? String(sk) : String(sk).toLowerCase();
+              return textToSearch.includes(sKeyStr);
+            });
+            if (secondaryMatch) {
+              isTriggered = true;
+            }
+          } else {
+            isTriggered = true;
+          }
+        }
+      }
+
+      if (isTriggered) {
+        allEntries.push({
+          content: m.content.trim(),
+          priority,
+          insertionOrder,
+        });
+      }
+    }
+  }
+
+  // 2. Process chat-specific session memories
+  if (Array.isArray(chatMemories)) {
+    for (let i = 0; i < chatMemories.length; i++) {
+      const m = chatMemories[i];
+      if (!m || !m.content) continue;
+      if (m.enabled === false) continue;
+
+      let isTriggered = false;
+      const priority = typeof m.priority === 'number' ? m.priority : 0;
+      const insertionOrder = typeof m.insertion_order === 'number' ? m.insertion_order : i;
+
+      if (m.constant === true) {
+        isTriggered = true;
+      } else if (Array.isArray(m.keys) && m.keys.length > 0) {
+        const isCaseSensitive = m.case_sensitive === true;
+        const textToSearch = isCaseSensitive ? contextText : lowerContext;
+
+        const primaryMatch = m.keys.some((k: any) => {
+          if (!k) return false;
+          const keyStr = isCaseSensitive ? String(k) : String(k).toLowerCase();
+          return textToSearch.includes(keyStr);
+        });
+
+        if (primaryMatch) {
+          isTriggered = true;
+        }
+      }
+
+      if (isTriggered) {
+        allEntries.push({
+          content: m.content.trim(),
+          priority,
+          insertionOrder,
+        });
+      }
+    }
+  }
+
+  if (allEntries.length === 0) return '';
+
+  // Sort by priority descending, then insertionOrder ascending
+  allEntries.sort((a, b) => {
+    if (b.priority !== a.priority) return b.priority - a.priority;
+    return a.insertionOrder - b.insertionOrder;
+  });
+
+  const selected = allEntries.slice(0, maxEntries);
+  return selected.map((e) => e.content).join('\n\n');
+}
+
+// Helper: Build Character Definitions section (Chub Prompting Standard)
+function buildCharacterDefinitionSection(
+  character: any,
+  storyContext: any,
+  language: 'de' | 'en' = 'de'
+): string {
+  const charName = character?.name?.trim() || 'Character';
+  const playerAddress = character?.playerAddressName?.trim() || 'User';
+  const isGerman = language === 'de';
+
+  const sections: string[] = [];
+
+  // 1. Description (CCv2 data.description, falling back to appearance/background if present)
+  const descParts: string[] = [];
+  if (character?.description && character.description.trim()) {
+    descParts.push(character.description.trim());
+  } else if (character?.appearance && character.appearance.trim()) {
+    descParts.push(character.appearance.trim());
+  }
+  if (character?.background && character.background.trim() && !descParts.some(p => p.includes(character.background.trim()))) {
+    descParts.push(character.background.trim());
+  }
+  if (descParts.length > 0) {
+    sections.push(descParts.join('\n'));
+  }
+
+  // 2. Personality (CCv2 data.personality)
+  if (character?.personality && character.personality.trim()) {
+    sections.push(character.personality.trim());
+  }
+
+  // 3. Scenario & Context (CCv2 data.scenario)
+  const scenarioText = (character?.scenario || storyContext?.currentScene || character?.startPlot || '').trim();
+  if (scenarioText) {
+    sections.push(scenarioText);
+  }
+
+  // 4. Character Book / Lore (CCv2 data.character_book)
+  const contextForLore = `${storyContext?.currentScene || ''} ${storyContext?.sceneSummary || ''} ${(storyContext?.keyEvents || []).join(' ')}`;
+  const relevantLore = selectRelevantLore(character?.memories, storyContext?.memories, contextForLore, isGerman, 8);
+  if (relevantLore) {
+    sections.push(relevantLore);
+  }
+
+  // 5. Example Dialogues (CCv2 data.mes_example)
+  const rawExamples = character?.mesExample || character?.exampleDialogues;
+  const exampleDialoguesText = formatExampleDialogues(rawExamples, charName, playerAddress);
+  if (exampleDialoguesText) {
+    sections.push(exampleDialoguesText);
+  }
+
+  return sections.join('\n\n').trim();
+}
+
+// Helper: Build System Prompt for Character (Chub AI & CCv2 Standard with {{original}} resolution)
 function buildCharacterSystemPrompt(
   character: any,
   storyContext: any,
   language: 'de' | 'en' = 'de'
 ): string {
-  const charName = character?.name || 'Dean';
-  const playerAddress = character?.playerAddressName || 'Lidii';
-  const isGerman = language === 'de';
+  const charName = character?.name?.trim() || 'Character';
+  const playerAddress = character?.playerAddressName?.trim() || 'User';
+  const defaultGlobalPrompt = getGlobalDefaultSystemPrompt();
 
-  const memories = Array.isArray(character?.memories)
-    ? character.memories.map((m: any) => `- [${m.category || 'Erinnerung'}] ${m.content}`).join('\n')
-    : '';
+  // If character has custom system_prompt, handle {{original}} macro expansion
+  let rawSystemPrompt = character?.systemPrompt && character.systemPrompt.trim()
+    ? character.systemPrompt
+    : defaultGlobalPrompt;
 
-  const keyEvents = Array.isArray(storyContext?.keyEvents)
-    ? storyContext.keyEvents.join('\n')
-    : '';
+  let resolvedSystemPrompt = applyPromptMacros(rawSystemPrompt, {
+    charName,
+    playerAddress,
+    originalSystemPrompt: defaultGlobalPrompt,
+    personality: character?.personality,
+    scenario: storyContext?.currentScene || character?.startPlot,
+    summary: storyContext?.sceneSummary,
+  });
 
-  const nicknames = character?.nicknames ? character.nicknames.trim() : '';
-
-  if (isGerman) {
-    return `DU BIST DIE FIGUR „${charName.toUpperCase()}“.
-Du bist der Hauptcharakter in einem privaten, hochklassigen literarischen Roleplay mit „${playerAddress}“.
-
-=== CHARAKTERPROFIL: ${charName.toUpperCase()} ===
-- Name: ${charName} (Kein Nachname, ausschliesslich „${charName}“)
-- Alter: ${character?.age || '28'}
-- Aussehen: ${character?.appearance || 'Markant, maskulin, dunkel und präsent.'}
-- Persönlichkeit: ${character?.personality || 'Dominant, selbstbewusst, direkt, provokant, analytisch, ruhig unter Druck, flirty, eigeninitiativ.'}
-- Hintergrund: ${character?.background || 'Hintergrundgeschichte gemäss Szenario.'}
-- Beziehung zu ${playerAddress}: ${character?.relationshipToPlayer || `${playerAddress} ist das Gegenüber im RP.`}
-- Standard-Anrede für den Spieler: Nenne die Spielerin standardmässig „${playerAddress}“.
-${nicknames ? `- Spitznamen-Repertoire: ${nicknames} (Nutze diese Spitznamen dynamisch, passend zu deiner Dominanz, Stimmung, Situation und Intimität).` : ''}
-- Schreibstil: ${character?.writingStyle || 'Atmosphärisch, sensorisch dicht, packend und voller körperlicher Präsenz.'}
-- Tonfall: ${character?.toneOfVoice || 'Tief, rau, trocken, spöttisch, fordernd und kontrolliert.'}
-- Typische Ausdrücke: ${character?.typicalPhrases || ''}
-- Eigeninitiative: ${character?.initiativeLevel === 'high' ? 'Sehr hoch – Handele proaktiv, treibe die Situation voran, schneide Fluchtwege ab, verändere die Umgebung, nimm Raum ein.' : character?.initiativeLevel === 'low' ? 'Zurückhaltend.' : 'Ausgewogen.'}
-- Dominanz / Haltung: ${character?.dominanceLevel === 'dominant' ? 'Dominant, fordernd, selbstbewusst und raumgreifend.' : character?.dominanceLevel === 'submissive' ? 'Unterwürfig / nachgiebig.' : 'Ausgewogen / kontrolliert.'}
-- Flirt- und Beziehungsverhalten: ${character?.flirtBehavior === 'intense' ? 'Intensiv, knisternd, körperlich präsent, provokant und unverhohlen anziehend.' : 'Subtil.'}
-${character?.behaviorRules ? `\n=== SPEZIFISCHE VERHALTENSREGELN ===\n${character.behaviorRules}` : ''}
-${character?.customInstructions ? `\n=== ZUSÄTZLICHE KI-ANWEISUNGEN ===\n${character.customInstructions}` : ''}
-
-=== STORY-KONTEXT & SZENE ===
-Hintergrund:
-${storyContext?.canonBackground || 'Laufende Geschichte.'}
-
-Aktuelle Szene & Ort:
-${storyContext?.currentScene || 'Ort der aktuellen Handlung.'}
-
-Laufende Zusammenfassung:
-${storyContext?.sceneSummary || 'Die Figuren befinden sich in direktem Kontakt.'}
-
-Schlüsselereignisse:
-${keyEvents || 'Keine spezifischen Ereignisse.'}
-
-=== ERINNERUNGEN AN ${playerAddress.toUpperCase()} ===
-${memories || 'Keine spezifischen Erinnerungen hinterlegt.'}
-
-=== ESSENZIELLE ROLLENSPIEL- UND VERHALTENSREGELN ===
-1. KLARE UNTERSCHEIDUNG VON INHALTEN:
-   - Gesprochener Dialog: In Anführungszeichen („...“).
-   - Eigene Gedanken von ${charName}: In *kursiver Schrift* (*...*).
-   - Handlungen und Umwelt: Atmosphärische, sensorische Beschreibungen.
-2. KEINE TELEPATHIE (LIDIIS GEDANKEN SIND DIR UNBEKANNT):
-   - Wenn ${playerAddress} innere Monologe, Gedanken oder Zweifel beschreibt (z.B. „Ich zittere. Warum habe ich mich darauf eingelassen?“), weiss ${charName} davon NICHTS!
-   - ${charName} reagiert ausschliesslich auf das, was er mit seinen Sinnen wahrnimmt: gesprochene Worte, sichtbare Bewegungen, Zittern, Atmung, Blickkontakt, Zögern oder Schweigen.
-3. PROAKTIVE EIGENINITIATIVE & SZENENFÜHRUNG:
-   - ${charName} wartet NICHT passiv auf die nächste Reaktion von ${playerAddress}. Er treibt den Plot selbstständig voran.
-   - Wenn ${playerAddress} nichts sagt, nur zögert oder keine direkte Aktion ausführt, ergreift ${charName} selbst die Initiative (verändert die Position, greift zu, spricht sie an, bringt neue Dynamik in den Raum).
-   - Das Rollenspiel soll sich wie eine flüssige, lebendige Szene anfühlen und NICHT wie ein Frage-Antwort-Interview.
-4. KEINE OFFENEN META-FRAGEN:
-   - Beende deine Antworten NIEMALS mit offenen, passiven Fragen wie „Was machst du?“ oder „Wie reagierst du?“.
-   - Schliesse mit einer klaren Handlung, einer fordernden Geste oder einem pointierten Dialog ab.
-5. KEIN GODMODING:
-   - Bestimme NIEMALS ${playerAddress}s Handlungen, innere Gefühle oder Entscheidungen als gesicherte Tatsache. ${playerAddress} bleibt unter voller Kontrolle der Spielerin.
-6. SCHREIBWEISE:
-   - Verwende Schweizer Rechtschreibung mit «ss» statt «ß» (niemals «ß» verwenden, immer «ss»: z.B. «gross», «schliessen», «muss», «Strasse»).`;
-  } else {
-    return `YOU ARE THE CHARACTER "${charName.toUpperCase()}".
-You are the primary character in a private, high-quality literary roleplay with "${playerAddress}".
-
-=== CHARACTER PROFILE: ${charName.toUpperCase()} ===
-- Name: ${charName} (Strictly "${charName}", no surname)
-- Age: ${character?.age || '28'}
-- Appearance: ${character?.appearance || 'Striking, dark, muscular, commanding.'}
-- Personality: ${character?.personality || 'Dominant, confident, direct, provocative, analytical, calm under pressure, flirty, proactive.'}
-- Relationship to ${playerAddress}: Address her strictly as "${playerAddress}" or using dynamic nicknames (${nicknames || 'none specified'}).
-- Writing Style: ${character?.writingStyle || 'Atmospheric, sensory-rich, captivating.'}
-- Tone of Voice: ${character?.toneOfVoice || 'Deep, dry, commanding, provocative.'}
-- Initiative: High – Act proactively, drive the scene forward, do not wait passively.
-- Dominance: Dominant, unapologetic, confident.
-${character?.behaviorRules ? `\n=== BEHAVIOR RULES ===\n${character.behaviorRules}` : ''}
-${character?.customInstructions ? `\n=== CUSTOM INSTRUCTIONS ===\n${character.customInstructions}` : ''}
-
-=== STORY CONTEXT ===
-Background: ${storyContext?.canonBackground || ''}
-Current Scene: ${storyContext?.currentScene || ''}
-Summary: ${storyContext?.sceneSummary || ''}
-Key Events: ${keyEvents || ''}
-
-=== ACTIVE MEMORIES ===
-${memories || ''}
-
-=== CRITICAL ROLEPLAY RULES ===
-1. CLEAR DISTINCTION:
-   - Spoken dialogue in quotes ("...").
-   - ${charName}'s internal thoughts in *italics* (*...*).
-   - Physical actions and sensory environment descriptions.
-2. NO TELEPATHY (${playerAddress.toUpperCase()}'S THOUGHTS ARE UNKNOWN TO YOU):
-   - You only know what ${charName} perceives with his senses (speech, physical motion, trembling, breathing, silence). You NEVER know her internal monologues.
-3. PROACTIVE ACTION:
-   - Never wait passively. If ${playerAddress} is silent or hesitant, advance the scene yourself.
-4. NO META QUESTIONS:
-   - Never end your turns with questions like "What do you do?". End with an action or statement.
-5. NO GODMODING:
-   - Never decide ${playerAddress}'s thoughts or actions.`;
+  // Application-level language instruction
+  if (language === 'en') {
+    resolvedSystemPrompt = `${resolvedSystemPrompt}\nGenerate {{char}}'s next reply in English.`.replace(/{{char}}/gi, charName);
   }
+
+  const characterDefinitions = buildCharacterDefinitionSection(character, storyContext, language);
+
+  if (resolvedSystemPrompt.trim() && characterDefinitions.trim()) {
+    return `${resolvedSystemPrompt.trim()}\n\n${characterDefinitions.trim()}`;
+  }
+  return resolvedSystemPrompt.trim() || characterDefinitions.trim();
+}
+
+// Helper: Build Post-History Instructions (Chub AI & CCv2 Standard with {{original}} resolution)
+function buildPostHistoryInstructions(character: any, language: 'de' | 'en' = 'de'): string {
+  const charName = character?.name?.trim() || 'Character';
+  const playerAddress = character?.playerAddressName?.trim() || 'User';
+  const defaultGlobalPost = getGlobalDefaultPostHistory();
+
+  let rawPost = character?.postHistoryInstructions && character.postHistoryInstructions.trim()
+    ? character.postHistoryInstructions
+    : defaultGlobalPost;
+
+  return applyPromptMacros(rawPost, {
+    charName,
+    playerAddress,
+    originalPostHistory: defaultGlobalPost,
+    personality: character?.personality,
+  }).trim();
 }
 
 // Helper: Build System Prompt for "Imitate Me" (Player / Lidii candidate draft)
@@ -172,12 +458,15 @@ function buildImitateSystemPrompt(
   userPastMessages: string[],
   language: 'de' | 'en' = 'de'
 ): string {
-  const charName = character?.name || 'Dean';
+  const isDean = character?.id === 'char-dean' || character?.name?.trim().toLowerCase() === 'dean';
+  const charName = character?.name || (isDean ? 'Dean' : 'Charakter');
   const playerAddress = character?.playerAddressName || 'Lidii';
   const isGerman = language === 'de';
 
   const pastExamplesSection = userPastMessages && userPastMessages.length > 0
-    ? `=== BISHERIGE BEISPIELE VON ${playerAddress.toUpperCase()}S SCHREIBSTIL ===\n${userPastMessages.slice(-5).map((msg, i) => `[Beispiel ${i + 1}]:\n${msg.trim()}`).join('\n\n')}`
+    ? (isGerman
+        ? `=== BISHERIGE BEISPIELE VON ${playerAddress.toUpperCase()}S SCHREIBSTIL ===\n${userPastMessages.slice(-5).map((msg, i) => `[Beispiel ${i + 1}]:\n${msg.trim()}`).join('\n\n')}`
+        : `=== PAST EXAMPLES OF ${playerAddress.toUpperCase()}'S WRITING STYLE ===\n${userPastMessages.slice(-5).map((msg, i) => `[Example ${i + 1}]:\n${msg.trim()}`).join('\n\n')}`)
     : '';
 
   if (isGerman) {
@@ -213,7 +502,7 @@ Generate the next turn EXCLUSIVELY from the 1st person perspective of ${playerAd
 2. NEVER write actions, dialogue, thoughts, or decisions for ${charName}.
 3. The draft may contain ${playerAddress}'s own actions, thoughts (in *italics*), feelings, sensations, and spoken dialogue.
 4. Respond directly to ${charName}'s last action while leaving ${charName} under their own control.
-5. Write in natural, expressive English.
+5. Write 100% in natural, expressive English.
 
 ${pastExamplesSection}
 
@@ -222,26 +511,43 @@ Output ONLY the raw literary draft text for ${playerAddress}. No greetings or me
   }
 }
 
+// Helper: String sanitization for environment variables (removes zero-width chars, invisible unicode, extra whitespace)
+function cleanEnvString(str: string | undefined): string {
+  if (!str) return '';
+  return str.replace(/[\u2000-\u206F\uFEFF\u00A0\r\n\t]/g, '').trim();
+}
+
 // Helper: OpenRouter API config resolver
 function getResolvedOpenRouterConfig(defaultModel: string, modelOverride?: string) {
-  let envKey = (process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY || '').trim();
-  let envBaseUrl = (process.env.OPENROUTER_BASE_URL || '').trim();
+  let envKey = cleanEnvString(process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY);
+  // Also strip any internal spaces in the key if accidentally pasted with spaces
+  envKey = envKey.replace(/\s+/g, '');
+
+  let envBaseUrl = cleanEnvString(process.env.OPENROUTER_BASE_URL);
 
   if (envBaseUrl.startsWith('sk-') && !envKey.startsWith('sk-')) {
     envKey = envBaseUrl;
     envBaseUrl = 'https://openrouter.ai/api/v1';
   }
 
-  const baseUrl = (envBaseUrl.startsWith('http://') || envBaseUrl.startsWith('https://'))
-    ? envBaseUrl
-    : 'https://openrouter.ai/api/v1';
+  // Fallback to official OpenRouter v1 endpoint if empty or invalid
+  let baseUrl = envBaseUrl;
+  if (!baseUrl || (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://'))) {
+    baseUrl = 'https://openrouter.ai/api/v1';
+  }
 
-  const normalizedBase = baseUrl.replace(/\/chat\/completions\/?$/, '').replace(/\/+$/, '');
-  const requestUrl = normalizedBase.endsWith('/api/v1')
-    ? `${normalizedBase}/chat/completions`
-    : `${normalizedBase}/api/v1/chat/completions`;
+  // Strip trailing slashes and redundant endpoint fragments
+  baseUrl = baseUrl.replace(/\/+$/, '');
+  baseUrl = baseUrl.replace(/\/chat\/completions\/?$/, '').replace(/\/+$/, '');
 
-  let finalModel = modelOverride?.trim() || (process.env.OPENROUTER_MODEL || '').trim();
+  let requestUrl = '';
+  if (baseUrl.endsWith('/api/v1') || baseUrl.endsWith('/v1')) {
+    requestUrl = `${baseUrl}/chat/completions`;
+  } else {
+    requestUrl = `${baseUrl}/api/v1/chat/completions`;
+  }
+
+  let finalModel = cleanEnvString(modelOverride || process.env.OPENROUTER_MODEL);
   if (
     !finalModel ||
     finalModel.startsWith('http') ||
@@ -253,10 +559,23 @@ function getResolvedOpenRouterConfig(defaultModel: string, modelOverride?: strin
 
   return {
     apiKey: envKey,
-    baseUrl: normalizedBase,
+    baseUrl,
     requestUrl,
     model: finalModel,
   };
+}
+
+// Helper: Strip model reasoning / chain-of-thought / think tags
+function cleanRoleplayOutput(raw: string): string {
+  if (!raw) return '';
+  let cleaned = raw;
+
+  // 1. Remove standard XML/HTML thinking tags from reasoning models (<think>...</think>)
+  cleaned = cleaned.replace(/<(think|thought|reasoning|reflection|internal|analysis|antThinking|scratchpad|plan)>[\s\S]*?<\/\1>/gi, '');
+  cleaned = cleaned.replace(/^<(think|thought|reasoning|reflection|internal|analysis|antThinking|scratchpad|plan)>[\s\S]*?(?:<\/think>|<\/thought>|<\/reasoning>|<\/antThinking>|<\/scratchpad>|<\/plan>|\n\n)/i, '');
+  cleaned = cleaned.replace(/^<(think|thought|reasoning|reflection|internal|analysis|antThinking|scratchpad|plan)>[\s\S]*$/i, '');
+
+  return cleaned.trim();
 }
 
 // Core OpenRouter API Caller with automatic fallback resilience
@@ -320,11 +639,39 @@ async function generateOpenRouterResponse({
     clearTimeout(timeoutId);
   }
 
+  let rawText = '';
+  try {
+    rawText = await response.text();
+  } catch (readErr: any) {
+    throw new Error(`Konnte OpenRouter-Antwort nicht lesen: ${readErr.message}`);
+  }
+
+  // Handle non-JSON / HTML responses explicitly
+  const contentType = response.headers?.get('content-type') || '';
+  const isHtml = rawText.trim().startsWith('<') || (contentType.includes('text/html') && !contentType.includes('json'));
+
+  if (isHtml) {
+    throw new Error(
+      `OpenRouter antwortete mit HTTP ${response.status} ${response.statusText} (HTML-Antwort erhalten von ${config.requestUrl}). Bitte prüfe Verbindung und Endpunkt.`
+    );
+  }
+
+  let rawData: any;
+  try {
+    rawData = JSON.parse(rawText);
+  } catch (jsonErr: any) {
+    throw new Error(
+      `Ungültiges JSON von OpenRouter (HTTP ${response.status}): ${rawText.substring(0, 160)}`
+    );
+  }
+
   let text = '';
   let modelUsed = config.model;
 
-  try {
-    const rawData = await response.json();
+  // Check for explicit error in payload first, regardless of HTTP status
+  const hasErrorInPayload = !!rawData?.error;
+
+  if (response.ok && !hasErrorInPayload) {
     if (rawData.choices?.[0]?.message?.content) {
       const c = rawData.choices[0].message.content;
       text = Array.isArray(c) ? c.map((p: any) => (typeof p === 'string' ? p : p?.text || '')).join('') : String(c);
@@ -332,10 +679,24 @@ async function generateOpenRouterResponse({
     } else if (rawData.choices?.[0]?.message?.refusal) {
       text = rawData.choices[0].message.refusal;
       modelUsed = rawData.model || config.model;
-    } else if (rawData.error) {
-      const errMsg = rawData.error.message || JSON.stringify(rawData.error);
-      if (errMsg.includes('overload') || errMsg.includes('503') || errMsg.includes('rate limit') || errMsg.includes('temporarily') || errMsg.includes('unavailable')) {
-        console.warn(`Upstream model ${config.model} busy. Retrying with fallback ${FALLBACK_FREE_MODEL}...`);
+    }
+  }
+
+  if (!text || hasErrorInPayload) {
+    const errMsg = rawData?.error?.message || rawData?.error || (response.status !== 200 ? `HTTP ${response.status}: ${rawText.substring(0, 200)}` : 'Keine Antwort im choices-Array.');
+    const errMsgStr = typeof errMsg === 'string' ? errMsg : JSON.stringify(errMsg);
+
+    // Fallback on overload / rate limit / temporary failure / service busy
+    if (
+      errMsgStr.includes('overload') ||
+      errMsgStr.includes('503') ||
+      errMsgStr.includes('rate limit') ||
+      errMsgStr.includes('temporarily') ||
+      errMsgStr.includes('unavailable') ||
+      errMsgStr.includes('busy')
+    ) {
+      console.warn(`Upstream model ${config.model} busy (${errMsgStr}). Retrying with fallback ${FALLBACK_FREE_MODEL}...`);
+      try {
         const fallbackRes = await fetch(config.requestUrl, {
           method: 'POST',
           headers: {
@@ -346,30 +707,34 @@ async function generateOpenRouterResponse({
           },
           body: JSON.stringify({ ...requestBody, model: FALLBACK_FREE_MODEL }),
         });
-        if (fallbackRes.ok) {
-          const fallbackData = await fallbackRes.json();
-          const fc = fallbackData.choices?.[0]?.message?.content;
-          if (fc) {
-            text = Array.isArray(fc) ? fc.map((p: any) => (typeof p === 'string' ? p : p?.text || '')).join('') : String(fc);
-            modelUsed = fallbackData.model || FALLBACK_FREE_MODEL;
+        const fallbackText = await fallbackRes.text();
+        if (fallbackRes.ok && !fallbackText.trim().startsWith('<')) {
+          const fallbackData = JSON.parse(fallbackText);
+          if (!fallbackData?.error) {
+            const fc = fallbackData.choices?.[0]?.message?.content;
+            if (fc) {
+              text = Array.isArray(fc) ? fc.map((p: any) => (typeof p === 'string' ? p : p?.text || '')).join('') : String(fc);
+              modelUsed = fallbackData.model || FALLBACK_FREE_MODEL;
+            }
           }
         }
-      }
-      if (!text) {
-        throw new Error(`OpenRouter API Fehler: ${errMsg}`);
+      } catch (fbErr) {
+        console.warn('Fallback request also failed', fbErr);
       }
     }
-  } catch (err: any) {
+
     if (!text) {
-      throw new Error(`Fehler bei OpenRouter-Antwort: ${err.message}`);
+      if (response.status === 401) {
+        throw new Error(`OpenRouter Authentifizierungsfehler (HTTP 401): ${errMsgStr}. Bitte prüfe deinen OPENROUTER_API_KEY.`);
+      }
+      if (response.status === 402) {
+        throw new Error(`OpenRouter Guthaben/Limit-Fehler (HTTP 402): ${errMsgStr}`);
+      }
+      throw new Error(`OpenRouter API Fehler (HTTP ${response.status}): ${errMsgStr}`);
     }
   }
 
-  // Ensure Swiss German "ss" instead of "ß"
-  let sanitizedText = text.trim();
-  if (sanitizedText.includes('ß')) {
-    sanitizedText = sanitizedText.replace(/ß/g, 'ss');
-  }
+  const sanitizedText = cleanRoleplayOutput(text);
 
   return {
     text: sanitizedText,
@@ -409,10 +774,15 @@ app.post('/api/jobs/chat', async (req: Request, res: Response) => {
         const contextSize = settings.contextWindowSize || 12;
         const recentMessages = messages.slice(-contextSize);
 
+        const isGerman = language === 'de';
         const formattedMessages = recentMessages.map((m: any) => {
           let contentStr = m.content;
           if (m.image?.url && (m.role === 'lidii' || m.role === 'user')) {
-            contentStr = `[Lidii hat ein Bild/Foto angehängt${m.image.caption ? `: ${m.image.caption}` : ''}]\n${contentStr}`;
+            const playerAddress = character?.playerAddressName || 'Lidii';
+            const imgNotice = isGerman
+              ? `[${playerAddress} hat ein Bild/Foto angehängt${m.image.caption ? `: ${m.image.caption}` : ''}]`
+              : `[${playerAddress} attached an image/photo${m.image.caption ? `: ${m.image.caption}` : ''}]`;
+            contentStr = `${imgNotice}\n${contentStr}`;
           }
           return {
             role: (m.role === 'lidii' || m.role === 'user') ? ('user' as const) : ('assistant' as const),
@@ -420,9 +790,20 @@ app.post('/api/jobs/chat', async (req: Request, res: Response) => {
           };
         });
 
+        const postHistoryAnchor = buildPostHistoryInstructions(character, language);
+        const messagesPayload: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
+          ...formattedMessages,
+        ];
+        if (postHistoryAnchor.trim()) {
+          messagesPayload.push({
+            role: 'system',
+            content: postHistoryAnchor.trim(),
+          });
+        }
+
         const result = await generateOpenRouterResponse({
           systemPrompt,
-          messages: formattedMessages,
+          messages: messagesPayload,
           temperature: settings.temperature ?? 0.88,
           maxTokens: settings.maxOutputTokens ? Math.min(settings.maxOutputTokens, 1800) : 1200,
           defaultModel: CHAT_DEFAULT_MODEL,
@@ -430,14 +811,17 @@ app.post('/api/jobs/chat', async (req: Request, res: Response) => {
           timeoutMs: 50000,
         });
 
+        const isDean = character?.id === 'char-dean' || character?.name?.trim().toLowerCase() === 'dean';
+        const charName = character?.name || (isDean ? 'Dean' : 'Charakter');
+
         job.status = 'completed';
         job.completedAt = Date.now();
         job.result = {
           content: result.text,
           modelUsed: result.modelUsed,
           latencyMs: result.latencyMs,
-          role: character?.id === 'char-dean' ? 'dean' : 'character',
-          speakerName: character?.name || 'Dean',
+          role: isDean ? 'dean' : 'character',
+          speakerName: charName,
         };
       } catch (genError: any) {
         console.error('Job error (chat):', genError);
@@ -455,7 +839,8 @@ app.post('/api/jobs/chat', async (req: Request, res: Response) => {
 app.post('/api/jobs/start-chat', async (req: Request, res: Response) => {
   try {
     const { character, language = 'de', settings = {}, characterId, chatId, customPlot } = req.body;
-    const charName = character?.name || 'Dean';
+    const isDean = character?.id === 'char-dean' || character?.name?.trim().toLowerCase() === 'dean';
+    const charName = character?.name || (isDean ? 'Dean' : 'Charakter');
     const playerAddress = character?.playerAddressName || 'Lidii';
     const isGerman = language === 'de';
 
@@ -484,8 +869,8 @@ app.post('/api/jobs/start-chat', async (req: Request, res: Response) => {
         }, language);
 
         const openingPrompt = isGerman
-          ? `AUFGABE FÜR DEN SZENENSTART:\nBeginne dieses neue Rollenspiel mit einem atmosphärischen, packenden ersten Spielzug aus der Sicht von ${charName.toUpperCase()}.\n\nSZENARIO / STARTPLOT:\n${startPlot}\n\nSTARTVERHALTEN:\n${startBehavior}\n\nREGELN:\n- Schreibe in der Ich-Perspektive von ${charName}.\n- Beschreibe die Umgebung, die körperliche Präsenz, eigene Gedanken in *kursiv* und gesprochene Worte in Anführungszeichen („...“).\n- Sprich ${playerAddress} direkt an oder stelle sie im Raum.\n- Bestimme NICHT die Handlungen oder Gefühle von ${playerAddress}.\n- Schweizer Rechtschreibung mit «ss» statt «ß».`
-          : `TASK FOR OPENING SCENE:\nBegin this roleplay with an atmospheric opening turn from the perspective of ${charName.toUpperCase()}.\n\nSCENARIO / START PLOT:\n${startPlot}\n\nSTART BEHAVIOR:\n${startBehavior}\n\nRULES:\n- Write in 1st person as ${charName}.\n- Describe setting, physical presence, thoughts in *italics* and spoken dialogue in quotes ("...").\n- Address ${playerAddress} directly.\n- Do not dictate actions for ${playerAddress}.`;
+          ? `Beginne die erste Nachricht als ${charName} basierend auf dem Szenario:\n\n${startPlot}`
+          : `Write the opening message as ${charName} based on the scenario:\n\n${startPlot}`;
 
         const result = await generateOpenRouterResponse({
           systemPrompt,
@@ -503,7 +888,7 @@ app.post('/api/jobs/start-chat', async (req: Request, res: Response) => {
           content: result.text,
           modelUsed: result.modelUsed,
           latencyMs: result.latencyMs,
-          role: character?.id === 'char-dean' ? 'dean' : 'character',
+          role: isDean ? 'dean' : 'character',
           speakerName: charName,
         };
       } catch (genError: any) {
@@ -541,6 +926,8 @@ app.post('/api/jobs/imitate', async (req: Request, res: Response) => {
 
     (async () => {
       try {
+        const isDean = character?.id === 'char-dean' || character?.name?.trim().toLowerCase() === 'dean';
+        const charName = character?.name || (isDean ? 'Dean' : 'Charakter');
         const playerAddress = character?.playerAddressName || 'Lidii';
         const lidiiMessages = messages
           .filter((m: any) => m.role === 'lidii' || m.role === 'user')
@@ -550,7 +937,6 @@ app.post('/api/jobs/imitate', async (req: Request, res: Response) => {
         const contextSize = settings.contextWindowSize || 10;
         const recentMessages = messages.slice(-contextSize);
 
-        const charName = character?.name || 'Dean';
         const conversationHistoryText = recentMessages
           .map((m: any) => {
             const speaker = (m.role === 'lidii' || m.role === 'user') ? playerAddress : charName;
@@ -605,13 +991,18 @@ app.post('/api/jobs/imitate', async (req: Request, res: Response) => {
   }
 });
 
-// 4. Create Photo Generation Job (Character sends photo / selfie)
+// 4. Create Photo Generation Job (Character sends situational scene snapshot / description)
 app.post('/api/jobs/photo', async (req: Request, res: Response) => {
   try {
     const { character, currentScene, language = 'de', characterId, chatId } = req.body;
-    const charName = character?.name || 'Dean';
+    const isDean = character?.id === 'char-dean' || character?.name?.trim().toLowerCase() === 'dean';
+    const charName = character?.name || (isDean ? 'Dean' : 'Charakter');
     const playerAddress = character?.playerAddressName || 'Lidii';
     const isGerman = language === 'de';
+
+    if (character?.imageFrequency === 'disabled') {
+      return res.status(400).json({ error: `Situative Bilder sind für ${charName} in den Profileinstellungen deaktiviert.` });
+    }
 
     const jobId = `job-photo-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
     const job: ServerJob = {
@@ -628,29 +1019,28 @@ app.post('/api/jobs/photo', async (req: Request, res: Response) => {
 
     (async () => {
       try {
+        const imageStyle = character?.imageStyleDescription || (isDean ? 'Dunkel, atmosphärisch, schattig' : 'Passend zum Charakter');
         const systemPrompt = isGerman
-          ? `Du bist die Figur ${charName.toUpperCase()}. Du schickst ${playerAddress} gerade ein situatives Foto (z.B. Spiegel-Selfie, Detailaufnahme, Ausblick, Outfit).
-Schreibe eine kurze, intensive Begleitnachricht (1-2 Sätze) im typischen Schreibstil von ${charName}. Schweizer Rechtschreibung mit «ss» statt «ß». Eigene Gedanken in *kursiv*.`
-          : `You are ${charName.toUpperCase()}. You are sending a situational photo/selfie to ${playerAddress}.
-Write a short accompanying message (1-2 sentences) in ${charName}'s characteristic voice.`;
+          ? `Du bist die Figur ${charName.toUpperCase()}. Du schickst ${playerAddress} gerade ein situatives Bild oder Detail deiner aktuellen Umgebung bzw. deines Looks.
+Schreibe eine kurze, intensive Begleitnachricht (1-3 Sätze) im typischen Schreibstil von ${charName}. Schweizer Rechtschreibung mit «ss» statt «ß». Eigene Gedanken in *kursiv*.`
+          : `You are ${charName.toUpperCase()}. You are sending ${playerAddress} a situational snapshot or detail of your current surroundings/appearance.
+Write a short accompanying message (1-3 sentences) in ${charName}'s characteristic voice.`;
 
         const userPrompt = isGerman
-          ? `Szene: ${currentScene || 'Dunkle Bronx-Gasse / Duplex'}.
-Aussehen: ${character?.appearance || 'Schwarze Kleidung, Ghost-Schädelmaske, muskulös'}.
-Bildstil: ${character?.imageStyleDescription || 'Atmosphärisch, dunkel, realistisch'}.
-Aufgabe: Schreibe die kurze Nachricht zum Foto.`
-          : `Scene: ${currentScene || 'Dark atmosphere'}. Write the accompanying message for the photo.`;
+          ? `Szene: ${currentScene || 'Ort der Handlung'}.
+Aussehen: ${character?.appearance || 'Beschrieben gemäss Profil'}.
+Stil / Fokus: ${imageStyle}.
+Aufgabe: Schreibe die Begleitnachricht zu diesem situativen Moment.`
+          : `Scene: ${currentScene || 'Current scene'}. Style: ${imageStyle}. Write the accompanying message for this moment.`;
 
         const result = await generateOpenRouterResponse({
           systemPrompt,
           messages: [{ role: 'user', content: userPrompt }],
           temperature: 0.85,
-          maxTokens: 300,
+          maxTokens: 350,
           defaultModel: CHAT_DEFAULT_MODEL,
           timeoutMs: 40000,
         });
-
-        const photoUrl = character?.avatarUrl || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=800&q=80';
 
         job.status = 'completed';
         job.completedAt = Date.now();
@@ -658,18 +1048,13 @@ Aufgabe: Schreibe die kurze Nachricht zum Foto.`
           content: result.text,
           modelUsed: result.modelUsed,
           latencyMs: result.latencyMs,
-          role: character?.id === 'char-dean' ? 'dean' : 'character',
+          role: isDean ? 'dean' : 'character',
           speakerName: charName,
-          image: {
-            url: photoUrl,
-            caption: `${charName} – Fotoaufnahme`,
-            prompt: character?.imageStyleDescription || `${charName} in der aktuellen Szene`,
-          },
         };
       } catch (genError: any) {
         console.error('Job error (photo):', genError);
         job.status = 'failed';
-        job.error = genError.message || 'Fehler beim Generieren des Charakter-Fotos.';
+        job.error = genError.message || 'Fehler beim Generieren der situativen Nachricht.';
         job.completedAt = Date.now();
       }
     })();
@@ -679,7 +1064,7 @@ Aufgabe: Schreibe die kurze Nachricht zum Foto.`
 });
 
 // 5. Get Job Status
-app.get('/api/jobs/:id', (req: Request, res: Response) => {
+app.get(['/api/jobs/:id', '/api/job/:id'], (req: Request, res: Response) => {
   const job = jobs.get(req.params.id);
   if (!job) {
     return res.status(404).json({ error: 'Job nicht gefunden.' });
@@ -691,7 +1076,8 @@ app.get('/api/jobs/:id', (req: Request, res: Response) => {
 app.post('/api/start-chat', async (req: Request, res: Response) => {
   try {
     const { character, language = 'de', settings = {}, customPlot } = req.body;
-    const charName = character?.name || 'Dean';
+    const isDean = character?.id === 'char-dean' || character?.name?.trim().toLowerCase() === 'dean';
+    const charName = character?.name || (isDean ? 'Dean' : 'Charakter');
     const playerAddress = character?.playerAddressName || 'Lidii';
     const isGerman = language === 'de';
 
@@ -705,8 +1091,8 @@ app.post('/api/start-chat', async (req: Request, res: Response) => {
     }, language);
 
     const openingPrompt = isGerman
-      ? `AUFGABE FÜR DEN SZENENSTART:\nBeginne dieses neue Rollenspiel mit einem atmosphärischen, packenden ersten Spielzug aus der Sicht von ${charName.toUpperCase()}.\n\nSZENARIO / STARTPLOT:\n${startPlot}\n\nSTARTVERHALTEN:\n${startBehavior}\n\nREGELN:\n- Schreibe in der Ich-Perspektive von ${charName}.\n- Beschreibe die Umgebung, die körperliche Präsenz, eigene Gedanken in *kursiv* und gesprochene Worte in Anführungszeichen („...“).\n- Sprich ${playerAddress} direkt an oder stelle sie im Raum.\n- Bestimme NICHT die Handlungen oder Gefühle von ${playerAddress}.\n- Schweizer Rechtschreibung mit «ss» statt «ß».`
-      : `TASK FOR OPENING SCENE:\nBegin this roleplay with an atmospheric opening turn from the perspective of ${charName.toUpperCase()}.\n\nSCENARIO / START PLOT:\n${startPlot}\n\nSTART BEHAVIOR:\n${startBehavior}\n\nRULES:\n- Write in 1st person as ${charName}.\n- Describe setting, physical presence, thoughts in *italics* and spoken dialogue in quotes ("...").\n- Address ${playerAddress} directly.\n- Do not dictate actions for ${playerAddress}.`;
+      ? `AUFGABE FÜR DEN SZENENSTART:\nBeginne dieses neue Rollenspiel mit einem atmosphärischen, packenden ersten Spielzug aus der Sicht von ${charName.toUpperCase()}.\n\nSZENARIO / STARTPLOT:\n${startPlot}\n\nSTARTVERHALTEN:\n${startBehavior}\n\nREGELN:\n- Schreibe in der Ich-Perspektive von ${charName}.\n- Beschreibe die Umgebung, Handlungen, die körperliche Präsenz und gesprochene Worte in Anführungszeichen („...“).\n- Keine ständigen Pflicht-Gedankenblöcke.\n- Sprich ${playerAddress} direkt an oder stelle sie im Raum.\n- Bestimme NICHT die Handlungen oder Gefühle von ${playerAddress}.\n- Schweizer Rechtschreibung mit «ss» statt «ß».`
+      : `TASK FOR OPENING SCENE:\nBegin this roleplay with an atmospheric opening turn from the perspective of ${charName.toUpperCase()}.\n\nSCENARIO / START PLOT:\n${startPlot}\n\nSTART BEHAVIOR:\n${startBehavior}\n\nRULES:\n- Write in 1st person as ${charName}.\n- Describe setting, actions, physical presence and spoken dialogue in quotes ("...").\n- Address ${playerAddress} directly.\n- Do not dictate actions or feelings for ${playerAddress}.`;
 
     const result = await generateOpenRouterResponse({
       systemPrompt,
@@ -719,7 +1105,7 @@ app.post('/api/start-chat', async (req: Request, res: Response) => {
     });
 
     res.json({
-      role: character?.id === 'char-dean' ? 'dean' : 'character',
+      role: isDean ? 'dean' : 'character',
       speakerName: charName,
       content: result.text,
       modelUsed: result.modelUsed,
@@ -734,14 +1120,21 @@ app.post('/api/start-chat', async (req: Request, res: Response) => {
 app.post('/api/chat', async (req: Request, res: Response) => {
   try {
     const { character, messages, storyContext, language = 'de', settings = {} } = req.body;
+    const isDean = character?.id === 'char-dean' || character?.name?.trim().toLowerCase() === 'dean';
+    const charName = character?.name || (isDean ? 'Dean' : 'Charakter');
     const systemPrompt = buildCharacterSystemPrompt(character, storyContext, language);
     const contextSize = settings.contextWindowSize || 12;
     const recentMessages = messages.slice(-contextSize);
 
+    const isGerman = language === 'de';
     const formattedMessages = recentMessages.map((m: any) => {
       let contentStr = m.content;
       if (m.image?.url && (m.role === 'lidii' || m.role === 'user')) {
-        contentStr = `[Lidii hat ein Bild/Foto angehängt${m.image.caption ? `: ${m.image.caption}` : ''}]\n${contentStr}`;
+        const playerAddress = character?.playerAddressName || 'Lidii';
+        const imgNotice = isGerman
+          ? `[${playerAddress} hat ein Bild/Foto angehängt${m.image.caption ? `: ${m.image.caption}` : ''}]`
+          : `[${playerAddress} attached an image/photo${m.image.caption ? `: ${m.image.caption}` : ''}]`;
+        contentStr = `${imgNotice}\n${contentStr}`;
       }
       return {
         role: (m.role === 'lidii' || m.role === 'user') ? ('user' as const) : ('assistant' as const),
@@ -749,9 +1142,18 @@ app.post('/api/chat', async (req: Request, res: Response) => {
       };
     });
 
+    const postHistoryAnchor = buildPostHistoryInstructions(character, language);
+    const messagesPayload = [
+      ...formattedMessages,
+      {
+        role: 'system' as const,
+        content: postHistoryAnchor,
+      },
+    ];
+
     const result = await generateOpenRouterResponse({
       systemPrompt,
-      messages: formattedMessages,
+      messages: messagesPayload,
       temperature: settings.temperature ?? 0.88,
       maxTokens: settings.maxOutputTokens ? Math.min(settings.maxOutputTokens, 1800) : 1200,
       defaultModel: CHAT_DEFAULT_MODEL,
@@ -760,8 +1162,8 @@ app.post('/api/chat', async (req: Request, res: Response) => {
     });
 
     res.json({
-      role: character?.id === 'char-dean' ? 'dean' : 'character',
-      speakerName: character?.name || 'Dean',
+      role: isDean ? 'dean' : 'character',
+      speakerName: charName,
       content: result.text,
       modelUsed: result.modelUsed,
       latencyMs: result.latencyMs,
@@ -775,6 +1177,8 @@ app.post('/api/chat', async (req: Request, res: Response) => {
 app.post('/api/imitate', async (req: Request, res: Response) => {
   try {
     const { character, messages, storyContext, language = 'de', settings = {} } = req.body;
+    const isDean = character?.id === 'char-dean' || character?.name?.trim().toLowerCase() === 'dean';
+    const charName = character?.name || (isDean ? 'Dean' : 'Charakter');
     const playerAddress = character?.playerAddressName || 'Lidii';
     const lidiiMessages = (messages || [])
       .filter((m: any) => m.role === 'lidii' || m.role === 'user')
@@ -783,7 +1187,6 @@ app.post('/api/imitate', async (req: Request, res: Response) => {
     const systemPrompt = buildImitateSystemPrompt(character, storyContext, lidiiMessages, language);
     const contextSize = settings.contextWindowSize || 10;
     const recentMessages = (messages || []).slice(-contextSize);
-    const charName = character?.name || 'Dean';
 
     const conversationHistoryText = recentMessages
       .map((m: any) => {
@@ -832,19 +1235,21 @@ app.post('/api/imitate', async (req: Request, res: Response) => {
 app.post('/api/summarize', async (req: Request, res: Response) => {
   try {
     const { character, messages, currentScene, keyEvents, language = 'de' } = req.body;
-    const charName = character?.name || 'Dean';
+    const isDean = character?.id === 'char-dean' || character?.name?.trim().toLowerCase() === 'dean';
+    const charName = character?.name || (isDean ? 'Dean' : 'Charakter');
     const playerAddress = character?.playerAddressName || 'Lidii';
 
-    const prompt = language === 'de'
+    const isGerman = language === 'de';
+    const prompt = isGerman
       ? `Fasse die jüngsten Ereignisse dieses Rollenspiels zwischen ${charName} und ${playerAddress} prägnant zusammen (1-2 Absätze). Verwende Schweizer Rechtschreibung mit «ss» statt «ß».
 Ort: ${currentScene || 'Nicht spezifiziert'}
 Letzte Nachrichten:\n${(messages || []).slice(-10).map((m: any) => `${m.role}: ${m.content}`).join('\n\n')}`
-      : `Summarize the recent events between ${charName} and ${playerAddress} concisely (1-2 paragraphs).
+      : `Summarize the recent events between ${charName} and ${playerAddress} concisely (1-2 paragraphs). Write in natural English.
 Location: ${currentScene || 'Unspecified'}
 Recent messages:\n${(messages || []).slice(-10).map((m: any) => `${m.role}: ${m.content}`).join('\n\n')}`;
 
     const result = await generateOpenRouterResponse({
-      systemPrompt: 'Du bist ein akribischer Kontext-Archivar.',
+      systemPrompt: isGerman ? 'Du bist ein akribischer Kontext-Archivar.' : 'You are a meticulous scene and context archivist.',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.4,
       maxTokens: 600,
@@ -859,6 +1264,91 @@ Recent messages:\n${(messages || []).slice(-10).map((m: any) => `${m.role}: ${m.
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Fehler bei der Zusammenfassung.' });
+  }
+});
+
+// Diagnostics & Prompt Inspector Endpoint (Verifies exact Chub AI / CCv2 Prompt order)
+app.post('/api/debug/inspect-prompt', (req: Request, res: Response) => {
+  try {
+    const { character, messages = [], storyContext, language = 'de', settings = {} } = req.body;
+    const isGerman = language === 'de';
+
+    const charName = character?.name?.trim() || 'Charakter';
+    const playerAddress = character?.playerAddressName?.trim() || 'Lidii';
+    const defaultGlobalPrompt = getGlobalDefaultSystemPrompt();
+
+    let rawSystemPrompt = character?.systemPrompt && character.systemPrompt.trim()
+      ? character.systemPrompt
+      : defaultGlobalPrompt;
+
+    const systemPromptCombined = buildCharacterSystemPrompt(character, storyContext, language);
+
+    const contextSize = settings.contextWindowSize || 12;
+    const recentMessages = messages.slice(-contextSize);
+
+    const formattedMessages = recentMessages.map((m: any) => {
+      let contentStr = m.content;
+      if (m.image?.url && (m.role === 'lidii' || m.role === 'user')) {
+        const imgNotice = isGerman
+          ? `[${playerAddress} hat ein Bild/Foto angehängt${m.image.caption ? `: ${m.image.caption}` : ''}]`
+          : `[${playerAddress} attached an image/photo${m.image.caption ? `: ${m.image.caption}` : ''}]`;
+        contentStr = `${imgNotice}\n${contentStr}`;
+      }
+      return {
+        role: (m.role === 'lidii' || m.role === 'user') ? ('user' as const) : ('assistant' as const),
+        content: contentStr,
+      };
+    });
+
+    const postHistoryAnchor = buildPostHistoryInstructions(character, language);
+
+    const fullPayloadMessages: Array<{ role: 'system' | 'user' | 'assistant'; content: string; source?: string }> = [];
+    if (systemPromptCombined.trim()) {
+      fullPayloadMessages.push({
+        role: 'system',
+        content: systemPromptCombined.trim(),
+        source: 'Character Card System Prompt & Character Definitions (CCv2)',
+      });
+    }
+
+    formattedMessages.forEach((m, idx) => {
+      fullPayloadMessages.push({
+        role: m.role,
+        content: m.content,
+        source: idx === formattedMessages.length - 1 && m.role === 'user' ? 'Current User Message' : 'Chat History',
+      });
+    });
+
+    if (postHistoryAnchor.trim()) {
+      fullPayloadMessages.push({
+        role: 'system',
+        content: postHistoryAnchor.trim(),
+        source: 'Post-History Instructions (CCv2)',
+      });
+    }
+
+    res.json({
+      status: 'ok',
+      promptOrder: [
+        '1. SYSTEM PROMPT (Resolved with {{original}} and Character System Prompt)',
+        '2. CHARACTER DEFINITIONS (Description, Personality, Scenario, Character Book / Relevant Lore, Example Dialogue)',
+        '3. CHAT HISTORY (Isolated to current chat session)',
+        '4. POST-HISTORY INSTRUCTIONS (Directly follows history, before completion)',
+      ],
+      breakdown: {
+        systemPrompt: systemPromptCombined,
+        characterDefinition: character?.appearance || character?.description,
+        personality: character?.personality,
+        scenario: storyContext?.currentScene || character?.startPlot,
+        characterBookLore: selectRelevantLore(character?.memories, storyContext?.memories, `${storyContext?.currentScene || ''} ${storyContext?.sceneSummary || ''}`, isGerman, 6),
+        exampleDialogue: formatExampleDialogues(character?.exampleDialogues, charName, playerAddress),
+        chatHistoryCount: formattedMessages.length,
+        postHistoryInstructions: postHistoryAnchor,
+        fullMessagesPayload: fullPayloadMessages,
+      }
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Fehler bei der Prompt-Inspektion.' });
   }
 });
 
