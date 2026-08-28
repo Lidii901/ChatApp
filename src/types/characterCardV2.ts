@@ -5,17 +5,20 @@
 // - https://docs.chub.ai/docs/the-basics/character-creation
 
 export interface CharacterBookEntry {
-  id?: number | string;
+  id?: number;
   keys: string[];
   content: string;
   secondary_keys?: string[];
   comment?: string;
-  insertion_order?: number;
+  insertion_order: number;
   case_sensitive?: boolean;
   name?: string;
   priority?: number;
-  extensions?: Record<string, any>;
-  enabled?: boolean;
+  extensions: Record<string, unknown>;
+  enabled: boolean;
+  selective?: boolean;
+  constant?: boolean;
+  position?: 'before_char' | 'after_char';
 }
 
 export interface CharacterBook {
@@ -24,7 +27,7 @@ export interface CharacterBook {
   scan_depth?: number;
   token_budget?: number;
   recursive_scanning?: boolean;
-  extensions?: Record<string, any>;
+  extensions: Record<string, unknown>;
   entries: CharacterBookEntry[];
 }
 
@@ -35,15 +38,15 @@ export interface CharacterCardV2Data {
   scenario: string;
   first_mes: string;
   mes_example: string;
-  creator_notes?: string;
-  system_prompt?: string;
-  post_history_instructions?: string;
-  alternate_greetings?: string[];
+  creator_notes: string;
+  system_prompt: string;
+  post_history_instructions: string;
+  alternate_greetings: string[];
   character_book?: CharacterBook;
-  tags?: string[];
-  creator?: string;
-  character_version?: string;
-  extensions?: Record<string, any>;
+  tags: string[];
+  creator: string;
+  character_version: string;
+  extensions: Record<string, any>;
 }
 
 export interface CharacterCardV2 {

@@ -1,5 +1,5 @@
 import { Character, MemoryItem } from '../types';
-import { CharacterCardV2, CharacterCardV2Data, CharacterBook, CharacterBookEntry } from '../types/characterCardV2';
+import { CharacterCardV2, CharacterCardV2Data } from '../types/characterCardV2';
 
 /**
  * Converts a CharacterCardV2 (or V2 Data payload) into internal Character format
@@ -33,6 +33,7 @@ export function characterCardV2ToCharacter(card: CharacterCardV2 | CharacterCard
     avatarUrl: ex.avatarUrl || '',
     age: ex.age || '',
     appearance: ex.appearance || data.description || '',
+    description: data.description || '',
     personality: data.personality || '',
     background: ex.background || '',
     relationshipToPlayer: ex.relationshipToPlayer || '',
@@ -53,9 +54,12 @@ export function characterCardV2ToCharacter(card: CharacterCardV2 | CharacterCard
     humorStyles: ex.humorStyles || [],
     behaviorRules: ex.behaviorRules || '',
     startPlot: data.scenario || ex.startPlot || '',
+    scenario: data.scenario || '',
     startBehavior: ex.startBehavior || '',
     startPrompt: data.first_mes || ex.startPrompt || '',
+    firstMes: data.first_mes || '',
     exampleDialogues: data.mes_example || '',
+    mesExample: data.mes_example || '',
     systemPrompt: data.system_prompt || '',
     postHistoryInstructions: data.post_history_instructions || '',
     alternateGreetings: data.alternate_greetings || [],
@@ -63,7 +67,7 @@ export function characterCardV2ToCharacter(card: CharacterCardV2 | CharacterCard
     creatorNotes: data.creator_notes || '',
     tags: data.tags || [],
     creator: data.creator || '',
-    characterVersion: data.character_version || '1.0',
+    characterVersion: data.character_version ?? '1.0',
     extensions: data.extensions || {},
     imageFrequency: ex.imageFrequency || 'occasional',
     imageStyleDescription: ex.imageStyleDescription || '',
@@ -78,41 +82,37 @@ export function characterCardV2ToCharacter(card: CharacterCardV2 | CharacterCard
  * Converts internal Character object into a strict Character Card V2 compliant JSON object
  */
 export function characterToCharacterCardV2(character: Character): CharacterCardV2 {
-  const bookEntries: CharacterBookEntry[] = (character.memories || []).map((m, idx) => ({
-    id: idx + 1,
-    keys: m.keys && m.keys.length > 0 ? m.keys : [m.category || 'detail'],
-    content: m.content,
-    enabled: true,
-    insertion_order: idx + 1,
-  }));
-
-  const character_book: CharacterBook = character.characterBook || {
-    name: `${character.name} Lorebook`,
-    description: `Lore and memory entries for ${character.name}`,
-    entries: bookEntries,
-  };
-
-  // Compile description cleanly
-  let description = character.description || character.appearance || '';
-  if (character.background && !description.includes(character.background)) {
-    description = description ? `${description}\n\n${character.background}` : character.background;
-  }
-
+  const characterBook = character.characterBook
+    ? {
+        ...character.characterBook,
+        extensions: character.characterBook.extensions ?? {},
+        entries: (character.characterBook.entries || []).map((entry, index) => {
+          const { id, ...entryWithoutId } = entry;
+          return {
+            ...entryWithoutId,
+            ...(typeof id === 'number' ? { id } : {}),
+            extensions: entry.extensions ?? {},
+            enabled: entry.enabled ?? true,
+            insertion_order: entry.insertion_order ?? index,
+          };
+        }),
+      }
+    : undefined;
   const v2Data: CharacterCardV2Data = {
     name: character.name || '',
-    description: description.trim(),
+    description: character.description !== undefined ? character.description : character.appearance || '',
     personality: character.personality || '',
-    scenario: character.startPlot || '',
-    first_mes: character.startPrompt || '',
-    mes_example: character.exampleDialogues || '',
+    scenario: character.scenario !== undefined ? character.scenario : character.startPlot || '',
+    first_mes: character.firstMes !== undefined ? character.firstMes : character.startPrompt || '',
+    mes_example: character.mesExample !== undefined ? character.mesExample : character.exampleDialogues || '',
     creator_notes: character.creatorNotes || '',
     system_prompt: character.systemPrompt || '',
     post_history_instructions: character.postHistoryInstructions || '',
     alternate_greetings: character.alternateGreetings || [],
-    character_book,
+    ...(characterBook ? { character_book: characterBook } : {}),
     tags: character.tags || [],
     creator: character.creator || '',
-    character_version: character.characterVersion || '1.0',
+    character_version: character.characterVersion !== undefined ? character.characterVersion : '1.0',
     extensions: {
       ...character.extensions,
       avatarUrl: character.avatarUrl,
@@ -165,4 +165,3 @@ export function isValidV2Card(obj: any): boolean {
 // Aliases for convenience
 export const characterToV2Card = characterToCharacterCardV2;
 export const v2CardToCharacter = characterCardV2ToCharacter;
-

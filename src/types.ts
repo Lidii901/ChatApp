@@ -97,7 +97,7 @@ export interface Character {
   systemPrompt?: string; // Character Card V2: system_prompt
   postHistoryInstructions?: string; // Character Card V2: post_history_instructions
   alternateGreetings?: string[]; // Character Card V2: alternate_greetings
-  characterBook?: any; // Character Card V2: character_book
+  characterBook?: import('./types/characterCardV2').CharacterBook; // Character Card V2: character_book
   creatorNotes?: string; // Character Card V2: creator_notes
   tags?: string[]; // Character Card V2: tags
   creator?: string; // Character Card V2: creator
