@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { normalizeLegacyCharacterToV2 } from '../src/utils/contextManager';
+import { normalizeLegacyCharacterToV2 } from '../src/utils/characterNormalizer';
 
 const legacy: any = {
   id: 'legacy-char',
@@ -46,7 +46,6 @@ assert.equal(migrated.mesExample, legacy.exampleDialogues);
 assert.match(migrated.postHistoryInstructions || '', /Do not invent user actions\./);
 assert.match(migrated.postHistoryInstructions || '', /Keep continuity exact\./);
 
-// Direct V2 values, including intentionally empty strings, stay authoritative.
 const directV2 = {
   ...legacy,
   description: '',

@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Character, ChatSession } from '../types';
 import {
   ChevronRight,
@@ -19,7 +19,12 @@ interface ChatListViewProps {
   chats: ChatSession[];
   activeChatId: string;
   onSelectChat: (chatId: string) => void;
-  onCreateChat: (characterId: string, customTitle?: string, language?: 'de' | 'en', initialMessage?: string) => void;
+  onCreateChat: (
+    characterId: string,
+    customTitle?: string,
+    language?: 'de' | 'en',
+    selectedGreeting?: string,
+  ) => void | Promise<void>;
   onDeleteChat: (chatId: string) => void;
   onUpdateChat: (updatedChat: ChatSession) => void;
   onNavigateToCharacters: () => void;
@@ -31,62 +36,10 @@ function cardGreeting(character: Character): string {
   return character.firstMes !== undefined ? character.firstMes : character.startPrompt || '';
 }
 
-function macroResolve(text: string, character: Character): string {
+function previewGreeting(text: string, character: Character): string {
   return (text || '')
     .replace(/{{char}}/gi, character.name || 'Character')
     .replace(/{{user}}/gi, character.playerAddressName || 'User');
-}
-
-async function localizeGreeting(
-  greeting: string,
-  targetLanguage: 'de' | 'en',
-  character: Character,
-): Promise<string> {
-  if (!greeting.trim()) return '';
-
-  const targetName = targetLanguage === 'en' ? 'English' : 'German';
-  const translator = {
-    id: '__greeting-localizer__',
-    name: 'Translator',
-    playerAddressName: 'User',
-    appearance: '',
-    description: '',
-    personality: '',
-    background: '',
-    relationshipToPlayer: '',
-    writingStyle: '',
-    toneOfVoice: '',
-    typicalPhrases: '',
-    thoughtsEnabled: false,
-    initiativeLevel: 'low',
-    flirtBehavior: 'none',
-    dominanceLevel: 'balanced',
-    behaviorRules: '',
-    memories: [],
-    avatarUrl: '',
-    createdAt: 0,
-    updatedAt: 0,
-    systemPrompt: `You are a precise literary translator. Translate the user's roleplay greeting into ${targetName}. If it is already fully in ${targetName}, return it unchanged. Preserve meaning, point of view, tone, Markdown, paragraph breaks, names, punctuation, and the placeholders {{char}} and {{user}} exactly. Do not add, remove, reinterpret, continue, or explain anything.`,
-    postHistoryInstructions: `Return ONLY the greeting text in ${targetName}. No commentary, labels, quotation wrapper, or explanation.`,
-  };
-
-  const response = await fetch('/api/chat', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      character: translator,
-      messages: [{ role: 'lidii', content: greeting }],
-      language: targetLanguage,
-      settings: { temperature: 0.1, maxOutputTokens: 1800, contextWindowSize: 2 },
-    }),
-  });
-
-  const data = await response.json();
-  if (!response.ok || data.error || !data.content) {
-    throw new Error(data.error || 'Greeting localization failed.');
-  }
-
-  return String(data.content).trim();
 }
 
 export const ChatListView: React.FC<ChatListViewProps> = ({
@@ -109,7 +62,6 @@ export const ChatListView: React.FC<ChatListViewProps> = ({
   const [openMenuChatId, setOpenMenuChatId] = useState<string | null>(null);
   const [chatToDelete, setChatToDelete] = useState<ChatSession | null>(null);
   const [chatToEdit, setChatToEdit] = useState<ChatSession | null>(null);
-  const greetingCache = useRef(new Map<string, string>());
 
   const selectedChar = characters.find(c => c.id === selectedCharId) || characters[0];
 
@@ -147,8 +99,7 @@ export const ChatListView: React.FC<ChatListViewProps> = ({
   };
 
   const openNewChat = (characterId?: string) => {
-    const nextId = characterId || characters[0]?.id || '';
-    setSelectedCharId(nextId);
+    setSelectedCharId(characterId || characters[0]?.id || '');
     setSelectedGreetingIndex(0);
     setNewChatTitle('');
     setIsCreateModalOpen(true);
@@ -157,32 +108,20 @@ export const ChatListView: React.FC<ChatListViewProps> = ({
   const handleStartNewChat = async () => {
     if (!selectedChar || isStarting) return;
     setIsStarting(true);
-
-    const chosen = availableGreetings[selectedGreetingIndex] ?? availableGreetings[0] ?? '';
-    let localized = chosen;
-
-    if (chosen.trim()) {
-      const cacheKey = `${selectedChar.id}:${newChatLang}:${chosen}`;
-      try {
-        localized = greetingCache.current.get(cacheKey) || '';
-        if (!localized) {
-          localized = await localizeGreeting(chosen, newChatLang, selectedChar);
-          greetingCache.current.set(cacheKey, localized);
-        }
-      } catch (error) {
-        console.warn('Greeting localization failed; falling back to generated localized opening.', error);
-        localized = '';
-      }
+    try {
+      const chosenGreeting = availableGreetings[selectedGreetingIndex] ?? availableGreetings[0];
+      await onCreateChat(
+        selectedChar.id,
+        newChatTitle.trim() || undefined,
+        newChatLang,
+        chosenGreeting,
+      );
+      setIsCreateModalOpen(false);
+      setNewChatTitle('');
+      setSelectedGreetingIndex(0);
+    } finally {
+      setIsStarting(false);
     }
-
-    onCreateChat(
-      selectedChar.id,
-      newChatTitle.trim() || undefined,
-      newChatLang,
-      localized !== undefined ? localized : '',
-    );
-    setIsStarting(false);
-    setIsCreateModalOpen(false);
   };
 
   return (
@@ -379,7 +318,7 @@ export const ChatListView: React.FC<ChatListViewProps> = ({
                     </button>
                   ))}
                 </div>
-                <p className="mt-2 text-[11px] leading-relaxed text-zinc-600">Die Eröffnungsnachricht wird für die gewählte Chat-Sprache lokalisiert, ohne die gespeicherte Character Card zu verändern.</p>
+                <p className="mt-2 text-[11px] leading-relaxed text-zinc-600">Die Eröffnungsnachricht wird passend zur Chat-Sprache lokalisiert, ohne die gespeicherte Character Card zu verändern.</p>
               </div>
 
               {availableGreetings.length > 1 && (
@@ -392,7 +331,7 @@ export const ChatListView: React.FC<ChatListViewProps> = ({
                         onClick={() => setSelectedGreetingIndex(index)}
                         className={`w-full rounded-2xl border p-3 text-left text-xs leading-relaxed ${selectedGreetingIndex === index ? 'border-rose-500/70 bg-rose-950/20 text-zinc-200' : 'border-zinc-800 bg-zinc-900/55 text-zinc-500'}`}
                       >
-                        <span className="line-clamp-3">{macroResolve(greeting, selectedChar)}</span>
+                        <span className="line-clamp-3">{previewGreeting(greeting, selectedChar)}</span>
                       </button>
                     ))}
                   </div>
