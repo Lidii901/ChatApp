@@ -276,7 +276,7 @@ export default function App() {
     const initialMsgs: Message[] = [];
 
     // In CCv2 / Chub AI, first_mes is the primary opening greeting
-    const firstGreeting = initialMessage || char.firstMes || char.startPrompt;
+    const firstGreeting = initialMessage ?? char.firstMes ?? char.startPrompt;
 
     if (firstGreeting) {
       const charName = char.name || 'Character';
@@ -294,7 +294,7 @@ export default function App() {
       });
     }
 
-    const startScenePlot = char.startPlot || 'Der Beginn einer neuen Szene.';
+    const startScenePlot = char.scenario || char.startPlot || 'Der Beginn einer neuen Szene.';
 
     const newChat: ChatSession = {
       id: newChatId,
@@ -330,7 +330,7 @@ export default function App() {
             settings,
             characterId: char.id,
             chatId: newChatId,
-            customPlot: char.startPlot,
+            customPlot: char.scenario || char.startPlot,
           }),
         });
         const data = await response.json();
@@ -401,7 +401,7 @@ export default function App() {
     });
 
     if (!chats.some((c) => c.characterId === savedChar.id)) {
-      handleCreateNewChat(savedChar.id, 'Erster Chat', activeChat?.language || 'de', savedChar.startPrompt);
+      handleCreateNewChat(savedChar.id, 'Erster Chat', activeChat?.language || 'de', savedChar.firstMes ?? savedChar.startPrompt);
     } else {
       setActiveCharacterId(savedChar.id);
     }

@@ -33,6 +33,7 @@ export function characterCardV2ToCharacter(card: CharacterCardV2 | CharacterCard
     avatarUrl: ex.avatarUrl || '',
     age: ex.age || '',
     appearance: ex.appearance || data.description || '',
+    description: data.description || '',
     personality: data.personality || '',
     background: ex.background || '',
     relationshipToPlayer: ex.relationshipToPlayer || '',
@@ -53,9 +54,12 @@ export function characterCardV2ToCharacter(card: CharacterCardV2 | CharacterCard
     humorStyles: ex.humorStyles || [],
     behaviorRules: ex.behaviorRules || '',
     startPlot: data.scenario || ex.startPlot || '',
+    scenario: data.scenario || '',
     startBehavior: ex.startBehavior || '',
     startPrompt: data.first_mes || ex.startPrompt || '',
+    firstMes: data.first_mes || '',
     exampleDialogues: data.mes_example || '',
+    mesExample: data.mes_example || '',
     systemPrompt: data.system_prompt || '',
     postHistoryInstructions: data.post_history_instructions || '',
     alternateGreetings: data.alternate_greetings || [],
@@ -92,19 +96,13 @@ export function characterToCharacterCardV2(character: Character): CharacterCardV
     entries: bookEntries,
   };
 
-  // Compile description cleanly
-  let description = character.description || character.appearance || '';
-  if (character.background && !description.includes(character.background)) {
-    description = description ? `${description}\n\n${character.background}` : character.background;
-  }
-
   const v2Data: CharacterCardV2Data = {
     name: character.name || '',
-    description: description.trim(),
+    description: (character.description || character.appearance || '').trim(),
     personality: character.personality || '',
-    scenario: character.startPlot || '',
-    first_mes: character.startPrompt || '',
-    mes_example: character.exampleDialogues || '',
+    scenario: character.scenario ?? character.startPlot ?? '',
+    first_mes: character.firstMes ?? character.startPrompt ?? '',
+    mes_example: character.mesExample ?? character.exampleDialogues ?? '',
     creator_notes: character.creatorNotes || '',
     system_prompt: character.systemPrompt || '',
     post_history_instructions: character.postHistoryInstructions || '',
@@ -165,4 +163,3 @@ export function isValidV2Card(obj: any): boolean {
 // Aliases for convenience
 export const characterToV2Card = characterToCharacterCardV2;
 export const v2CardToCharacter = characterCardV2ToCharacter;
-

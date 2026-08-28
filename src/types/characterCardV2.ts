@@ -16,6 +16,9 @@ export interface CharacterBookEntry {
   priority?: number;
   extensions?: Record<string, any>;
   enabled?: boolean;
+  selective?: boolean;
+  constant?: boolean;
+  position?: string;
 }
 
 export interface CharacterBook {
