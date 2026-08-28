@@ -73,7 +73,10 @@ export function activateCharacterBook(book: CharacterBook | undefined, history: 
 }
 
 function cardValue(character: any, authoritative: string, legacy: string): string {
-  return String(character?.[authoritative] || character?.[legacy] || '').trim();
+  const value = character?.[authoritative] !== undefined
+    ? character[authoritative]
+    : character?.[legacy];
+  return String(value ?? '').trim();
 }
 
 function macroValues(character: any, storyContext: any = {}) {
@@ -157,9 +160,32 @@ export function buildChatPayload(input: {
   return { systemPrompt, characterDefinitions, activatedCharacterBookEntries, chatHistory: history, postHistoryInstructions, messages };
 }
 
+export function buildStartChatPayload(input: {
+  character: any; language?: 'de' | 'en'; storyContext?: any; scenarioOverride?: string;
+}) {
+  const language = input.language || 'de';
+  const character = input.scenarioOverride !== undefined
+    ? { ...input.character, scenario: input.scenarioOverride }
+    : input.character;
+  const payload = buildChatPayload({ character, messages: [], storyContext: input.storyContext, language });
+  const scenario = cardValue(character, 'scenario', 'startPlot');
+  const values = macroValues(character, input.storyContext);
+  const openingTemplate = language === 'de'
+    ? 'Beginne die erste Nachricht als {{char}} basierend auf dem Szenario:\n\n{{scenario}}'
+    : 'Write the opening message as {{char}} based on the scenario:\n\n{{scenario}}';
+  return {
+    ...payload,
+    openingMessage: { role: 'user' as const, content: applyPromptMacros(openingTemplate, { ...values, scenario }) },
+  };
+}
+
 export function resolveGreeting(character: any, selectedAlternateIndex?: number): string {
   const selected = selectedAlternateIndex === undefined ? undefined : character?.alternateGreetings?.[selectedAlternateIndex];
-  const greeting = selected ?? character?.firstMes ?? character?.startPrompt ?? '';
+  const greeting = selected !== undefined
+    ? selected
+    : character?.firstMes !== undefined
+    ? character.firstMes
+    : character?.startPrompt ?? '';
   return applyPromptMacros(greeting, {
     char: character?.name?.trim() || 'Character',
     user: character?.playerAddressName?.trim() || 'User',

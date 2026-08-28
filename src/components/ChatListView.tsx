@@ -52,7 +52,7 @@ export const ChatListView: React.FC<ChatListViewProps> = ({
   const availableGreetings: string[] = React.useMemo(() => {
     if (!selectedChar) return [];
     const list: string[] = [];
-    const mainGreeting = selectedChar.firstMes || selectedChar.startPrompt;
+    const mainGreeting = selectedChar.firstMes !== undefined ? selectedChar.firstMes : selectedChar.startPrompt;
     if (mainGreeting) list.push(mainGreeting);
     if (Array.isArray(selectedChar.alternateGreetings)) {
       selectedChar.alternateGreetings.forEach((ag) => {

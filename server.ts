@@ -47,7 +47,7 @@ setInterval(() => {
 }, 300000).unref();
 
 // Character Card V2 prompt construction is shared by chat and diagnostics.
-import { buildChatPayload, resolveSystemPrompt } from './src/utils/promptBuilder';
+import { buildChatPayload, buildStartChatPayload } from './src/utils/promptBuilder';
 
 // Helper: Build System Prompt for "Imitate Me" (Player / Lidii candidate draft)
 function buildImitateSystemPrompt(
@@ -414,8 +414,6 @@ app.post('/api/jobs/start-chat', async (req: Request, res: Response) => {
     const { character, language = 'de', settings = {}, characterId, chatId, customPlot } = req.body;
     const isDean = character?.id === 'char-dean' || character?.name?.trim().toLowerCase() === 'dean';
     const charName = character?.name || (isDean ? 'Dean' : 'Charakter');
-    const playerAddress = character?.playerAddressName || 'Lidii';
-    const isGerman = language === 'de';
 
     const jobId = `job-start-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
     const job: ServerJob = {
@@ -432,16 +430,15 @@ app.post('/api/jobs/start-chat', async (req: Request, res: Response) => {
 
     (async () => {
       try {
-        const startPlot = customPlot || character?.scenario || character?.startPlot || character?.storyContext?.currentScene || 'Eine neue Szene beginnt.';
-        const systemPrompt = resolveSystemPrompt(character, language);
-
-        const openingPrompt = isGerman
-          ? `Beginne die erste Nachricht als ${charName} basierend auf dem Szenario:\n\n${startPlot}`
-          : `Write the opening message as ${charName} based on the scenario:\n\n${startPlot}`;
+        const payload = buildStartChatPayload({
+          character, language, storyContext: character?.storyContext,
+          scenarioOverride: customPlot,
+        });
+        const systemPrompt = payload.messages[0].content;
 
         const result = await generateOpenRouterResponse({
           systemPrompt,
-          messages: [{ role: 'user', content: openingPrompt }],
+          messages: [payload.openingMessage],
           temperature: settings.temperature ?? 0.9,
           maxTokens: 1100,
           defaultModel: CHAT_DEFAULT_MODEL,
@@ -645,19 +642,15 @@ app.post('/api/start-chat', async (req: Request, res: Response) => {
     const { character, language = 'de', settings = {}, customPlot } = req.body;
     const isDean = character?.id === 'char-dean' || character?.name?.trim().toLowerCase() === 'dean';
     const charName = character?.name || (isDean ? 'Dean' : 'Charakter');
-    const playerAddress = character?.playerAddressName || 'Lidii';
-    const isGerman = language === 'de';
-
-    const startPlot = customPlot || character?.scenario || character?.startPlot || character?.storyContext?.currentScene || 'Eine neue Szene beginnt.';
-    const systemPrompt = resolveSystemPrompt(character, language);
-
-    const openingPrompt = isGerman
-      ? `Beginne die erste Nachricht als ${charName} basierend auf dem Szenario:\n\n${startPlot}`
-      : `Write the opening message as ${charName} based on the scenario:\n\n${startPlot}`;
+    const payload = buildStartChatPayload({
+      character, language, storyContext: character?.storyContext,
+      scenarioOverride: customPlot,
+    });
+    const systemPrompt = payload.messages[0].content;
 
     const result = await generateOpenRouterResponse({
       systemPrompt,
-      messages: [{ role: 'user', content: openingPrompt }],
+      messages: [payload.openingMessage],
       temperature: settings.temperature ?? 0.9,
       maxTokens: 1100,
       defaultModel: CHAT_DEFAULT_MODEL,

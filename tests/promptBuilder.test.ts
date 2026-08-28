@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
-import { buildChatPayload, resolveGreeting, GLOBAL_SYSTEM_PROMPT } from '../src/utils/promptBuilder';
+import { buildChatPayload, buildStartChatPayload, resolveGreeting, GLOBAL_SYSTEM_PROMPT } from '../src/utils/promptBuilder';
 import { characterCardV2ToCharacter, characterToCharacterCardV2 } from '../src/utils/characterCardV2Converter';
+import type { CharacterBookEntry } from '../src/types/characterCardV2';
 import { defaultDeanPromptFixture } from './fixtures/defaultDeanPromptFixture';
 
 const base = { name: 'Dean', playerAddressName: 'Lidii', description: 'Dean description', personality: 'Dean personality', scenario: 'A library.', mesExample: '{{char}} greets {{user}}.', memories: [], creatorNotes: 'SECRET NOTES', dominanceLevel: 'LEGACY_DOMINANCE', flirtBehavior: 'LEGACY_FLIRT', pacing: 'LEGACY_PACING', writingStyle: 'LEGACY_STYLE', behaviorRules: 'LEGACY_RULES', customInstructions: 'LEGACY_CUSTOM', startBehavior: 'LEGACY_START' };
@@ -111,6 +112,53 @@ for (const hiddenLegacyValue of [
   defaultDeanPromptFixture.behaviorRules, defaultDeanPromptFixture.customInstructions,
   defaultDeanPromptFixture.startBehavior,
 ]) assert.doesNotMatch(defaultDeanPayload.messages[0].content, new RegExp(hiddenLegacyValue));
+
+const startPayload = buildStartChatPayload({ character: {
+  ...base,
+  description: 'UNIQUE_DESCRIPTION', personality: 'UNIQUE_PERSONALITY', scenario: 'UNIQUE_SCENARIO',
+  mesExample: '{{char}} says UNIQUE_EXAMPLE to {{user}}.', firstMes: '',
+  characterBook: { extensions: {}, entries: [{
+    keys: [], content: 'UNIQUE_LORE', extensions: {}, enabled: true, insertion_order: 0, constant: true,
+  }] },
+}, language: 'en' });
+for (const expected of ['UNIQUE_DESCRIPTION', 'UNIQUE_PERSONALITY', 'UNIQUE_SCENARIO', 'UNIQUE_EXAMPLE', 'UNIQUE_LORE']) {
+  assert.match(startPayload.messages[0].content, new RegExp(expected));
+}
+assert.doesNotMatch(startPayload.messages[0].content, /LEGACY_/);
+assert.equal(startPayload.openingMessage.content, 'Write the opening message as Dean based on the scenario:\n\nUNIQUE_SCENARIO');
+
+const emptyV2Card: any = { spec: 'chara_card_v2', spec_version: '2.0', data: {
+  name: 'Empty V2', description: '', personality: 'P', scenario: '', first_mes: '', mes_example: '',
+  creator_notes: '', system_prompt: '', post_history_instructions: '', alternate_greetings: [], tags: [],
+  creator: '', character_version: '', extensions: {
+    appearance: 'LEGACY_DESCRIPTION', startPlot: 'LEGACY_SCENARIO', startPrompt: 'LEGACY_FIRST',
+    exampleDialogues: 'LEGACY_EXAMPLE', unknownData: { preserved: true },
+  },
+  character_book: { entries: [{ keys: ['key'], content: 'content', extensions: { unknownEntry: 1 } }], extensions: { unknownBook: 2 } },
+} };
+const emptyV2Character = characterCardV2ToCharacter(emptyV2Card, 'empty-v2');
+const emptyV2Payload = buildChatPayload({ character: emptyV2Character, messages: [], language: 'en' });
+assert.doesNotMatch(emptyV2Payload.messages[0].content, /LEGACY_DESCRIPTION|LEGACY_SCENARIO|LEGACY_EXAMPLE/);
+assert.equal(resolveGreeting(emptyV2Character), '');
+const emptyV2Roundtrip = characterToCharacterCardV2(emptyV2Character);
+assert.equal(emptyV2Roundtrip.data.description, '');
+assert.equal(emptyV2Roundtrip.data.scenario, '');
+assert.equal(emptyV2Roundtrip.data.first_mes, '');
+assert.equal(emptyV2Roundtrip.data.mes_example, '');
+assert.equal(emptyV2Roundtrip.data.character_version, '');
+assert.deepEqual(emptyV2Roundtrip.data.extensions.unknownData, { preserved: true });
+assert.deepEqual(emptyV2Roundtrip.data.character_book?.extensions, { unknownBook: 2 });
+assert.deepEqual(emptyV2Roundtrip.data.character_book?.entries[0].extensions, { unknownEntry: 1 });
+assert.equal(emptyV2Roundtrip.data.character_book?.entries[0].enabled, true);
+assert.equal(emptyV2Roundtrip.data.character_book?.entries[0].insertion_order, 0);
+
+const numericIdEntry: CharacterBookEntry = {
+  id: 1, keys: [], content: '', extensions: {}, enabled: true, insertion_order: 0,
+};
+assert.equal(numericIdEntry.id, 1);
+// @ts-expect-error Character Card V2 entry IDs are numeric.
+const invalidStringId: CharacterBookEntry = { ...numericIdEntry, id: 'not-a-number' };
+void invalidStringId;
 console.log(JSON.stringify(cases, null, 2));
 console.log('All 14 production prompt/converter assertions passed.');
 

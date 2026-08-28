@@ -87,7 +87,9 @@ export const DiagnosticsModal: React.FC<DiagnosticsModalProps> = ({
     ? 'Card startPrompt / first_mes'
     : 'Keine (wird dynamisch generiert)';
 
-  const firstMesContent = activeCharacter?.firstMes || activeCharacter?.startPrompt || '—';
+  const firstMesContent = activeCharacter?.firstMes !== undefined
+    ? activeCharacter.firstMes || '—'
+    : activeCharacter?.startPrompt || '—';
   const resolvedFirstMes = firstMesContent
     .replace(/{{char}}/gi, charName)
     .replace(/{{user}}/gi, playerAddress);

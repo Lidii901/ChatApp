@@ -5,7 +5,7 @@
 // - https://docs.chub.ai/docs/the-basics/character-creation
 
 export interface CharacterBookEntry {
-  id?: number | string;
+  id?: number;
   keys: string[];
   content: string;
   secondary_keys?: string[];
@@ -38,15 +38,15 @@ export interface CharacterCardV2Data {
   scenario: string;
   first_mes: string;
   mes_example: string;
-  creator_notes?: string;
-  system_prompt?: string;
-  post_history_instructions?: string;
-  alternate_greetings?: string[];
+  creator_notes: string;
+  system_prompt: string;
+  post_history_instructions: string;
+  alternate_greetings: string[];
   character_book?: CharacterBook;
-  tags?: string[];
-  creator?: string;
-  character_version?: string;
-  extensions?: Record<string, any>;
+  tags: string[];
+  creator: string;
+  character_version: string;
+  extensions: Record<string, any>;
 }
 
 export interface CharacterCardV2 {
