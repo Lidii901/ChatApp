@@ -6,7 +6,6 @@ export const GLOBAL_SYSTEM_PROMPT = "Write {{char}}'s next reply in an immersive
 export const GLOBAL_POST_HISTORY = '';
 
 export function applyPromptMacros(template: string, values: Record<string, string | undefined>): string {
-  // Expand original once first, so macros contained by the original text are resolved below.
   let result = (template || '').replace(/{{original}}/gi, values.original ?? '');
   const supported = ['char', 'user', 'personality', 'scenario', 'memory', 'example_dialogue', 'summary', 'profile'];
   return supported.reduce(
@@ -79,48 +78,78 @@ function cardValue(character: any, authoritative: string, legacy: string): strin
   return String(value ?? '').trim();
 }
 
-function macroValues(character: any, storyContext: any = {}) {
+function macroValues(character: any, storyContext: any = {}, memoryText = '') {
   const char = character?.name?.trim() || 'Character';
   const user = character?.playerAddressName?.trim() || 'User';
   const example = applyPromptMacros(cardValue(character, 'mesExample', 'exampleDialogues'), { char, user });
-  const memory = Array.isArray(storyContext?.memories)
-    ? storyContext.memories.map((item: any) => item?.content).filter(Boolean).join('\n')
-    : '';
   return {
-    char, user,
+    char,
+    user,
     personality: String(character?.personality || ''),
     scenario: cardValue(character, 'scenario', 'startPlot'),
     example_dialogue: example,
+    memory: memoryText,
     summary: String(storyContext?.sceneSummary || ''),
-    memory,
     profile: String(storyContext?.profile || ''),
   };
 }
 
-export function resolveSystemPrompt(character: any, language: 'de' | 'en', storyContext?: any): string {
-  const values = macroValues(character, storyContext);
-  const raw = character?.systemPrompt?.trim() || GLOBAL_SYSTEM_PROMPT;
-  const resolved = applyPromptMacros(raw, { ...values, original: GLOBAL_SYSTEM_PROMPT });
-  const languageInstruction = language === 'en'
-    ? `Generate ${values.char}'s next reply in English.`
-    : `Generate ${values.char}'s next reply in German.`;
-  return `${resolved.trim()}\n${languageInstruction}`;
+function outputLanguageInstruction(char: string, language: 'de' | 'en'): string {
+  return language === 'en'
+    ? `Generate ${char}'s next reply in English.`
+    : `Generate ${char}'s next reply in German.`;
 }
 
-export function resolvePostHistory(character: any, storyContext?: any): string {
+function finalLanguageGuard(language: 'de' | 'en'): string {
+  return language === 'en'
+    ? 'FINAL OUTPUT LANGUAGE: Write the entire next reply in English only. Do not switch to another language because earlier character definitions or examples use it.'
+    : 'FINALE AUSGABESPRACHE: Schreibe die gesamte nächste Antwort ausschliesslich auf Deutsch. Wechsle nicht wegen anderssprachiger Charakterdefinitionen oder Beispiele in eine andere Sprache.';
+}
+
+export function resolveSystemPrompt(
+  character: any,
+  language: 'de' | 'en',
+  storyContext?: any,
+  memoryText = '',
+): string {
+  const values = macroValues(character, storyContext, memoryText);
+  const raw = character?.systemPrompt?.trim() || GLOBAL_SYSTEM_PROMPT;
+  const resolved = applyPromptMacros(raw, { ...values, original: GLOBAL_SYSTEM_PROMPT });
+  return `${resolved.trim()}\n${outputLanguageInstruction(values.char, language)}`;
+}
+
+export function resolvePostHistory(character: any, storyContext?: any, memoryText = ''): string {
   return applyPromptMacros(character?.postHistoryInstructions?.trim() || GLOBAL_POST_HISTORY, {
-    ...macroValues(character, storyContext), original: GLOBAL_POST_HISTORY,
+    ...macroValues(character, storyContext, memoryText),
+    original: GLOBAL_POST_HISTORY,
   }).trim();
 }
 
-export function buildCharacterDefinitions(character: any): string {
+function containsMacro(character: any, macro: string): boolean {
+  const source = `${character?.systemPrompt || ''}\n${character?.postHistoryInstructions || ''}`;
+  return new RegExp(`{{${macro}}}`, 'i').test(source);
+}
+
+export function buildCharacterDefinitions(
+  character: any,
+  options: { includePersonality?: boolean; includeScenario?: boolean; includeExample?: boolean } = {},
+): string {
   const values = macroValues(character);
+  const includePersonality = options.includePersonality !== false;
+  const includeScenario = options.includeScenario !== false;
+  const includeExample = options.includeExample !== false;
   return [
     cardValue(character, 'description', 'appearance'),
-    values.personality,
-    values.scenario,
-    values.example_dialogue,
+    includePersonality ? values.personality : '',
+    includeScenario ? values.scenario : '',
+    includeExample ? values.example_dialogue : '',
   ].filter(Boolean).join('\n\n');
+}
+
+function buildChatMemory(storyContext: any): string {
+  const summary = String(storyContext?.sceneSummary || '').trim();
+  if (!summary) return '';
+  return `Chat Memory:\n${summary}`;
 }
 
 function formatHistory(messages: any[], language: 'de' | 'en', playerAddress: string): PromptMessage[] {
@@ -139,29 +168,63 @@ function formatHistory(messages: any[], language: 'de' | 'en', playerAddress: st
 }
 
 export function buildChatPayload(input: {
-  character: any; messages: any[]; storyContext?: any; language?: 'de' | 'en'; contextWindowSize?: number;
+  character: any;
+  messages: any[];
+  storyContext?: any;
+  language?: 'de' | 'en';
+  contextWindowSize?: number;
 }) {
   const { character, language = 'de', storyContext } = input;
   const playerAddress = character?.playerAddressName?.trim() || 'User';
   const fullHistory = formatHistory(input.messages || [], language, playerAddress);
   const loreScanHistory = fullHistory.filter(message => message.role !== 'system');
   const activatedCharacterBookEntries = activateCharacterBook(character?.characterBook, loreScanHistory);
+  const activeLoreText = activatedCharacterBookEntries.map(entry => entry.content.trim()).filter(Boolean).join('\n\n');
+
   const contextWindowSize = input.contextWindowSize || 12;
   const history = formatHistory((input.messages || []).slice(-contextWindowSize), language, playerAddress);
-  const systemPrompt = resolveSystemPrompt(character, language, storyContext);
-  const characterDefinitions = buildCharacterDefinitions(character);
-  const beforeLore = activatedCharacterBookEntries.filter(entry => entry.position === 'before_char').map(entry => entry.content.trim()).join('\n\n');
-  const afterLore = activatedCharacterBookEntries.filter(entry => entry.position !== 'before_char').map(entry => entry.content.trim()).join('\n\n');
-  const postHistoryInstructions = resolvePostHistory(character, storyContext);
-  const systemContent = [systemPrompt, beforeLore, characterDefinitions, afterLore].filter(Boolean).join('\n\n');
+
+  const systemPrompt = resolveSystemPrompt(character, language, storyContext, activeLoreText);
+  const postHistoryInstructions = resolvePostHistory(character, storyContext, activeLoreText);
+  const characterDefinitions = buildCharacterDefinitions(character, {
+    includePersonality: !containsMacro(character, 'personality'),
+    includeScenario: !containsMacro(character, 'scenario'),
+    includeExample: !containsMacro(character, 'example_dialogue'),
+  });
+
+  const includeAutomaticLore = !containsMacro(character, 'memory');
+  const beforeLore = includeAutomaticLore
+    ? activatedCharacterBookEntries.filter(entry => entry.position === 'before_char').map(entry => entry.content.trim()).join('\n\n')
+    : '';
+  const afterLore = includeAutomaticLore
+    ? activatedCharacterBookEntries.filter(entry => entry.position !== 'before_char').map(entry => entry.content.trim()).join('\n\n')
+    : '';
+
+  const chatMemory = containsMacro(character, 'summary') ? '' : buildChatMemory(storyContext);
+  const languageGuard = finalLanguageGuard(language);
+  const systemContent = [systemPrompt, beforeLore, characterDefinitions, afterLore, chatMemory, languageGuard].filter(Boolean).join('\n\n');
   const messages: PromptMessage[] = [{ role: 'system', content: systemContent }, ...history];
-  // The card defines this field's semantics, but not a mandatory OpenAI-compatible role.
-  if (postHistoryInstructions) messages.push({ role: 'system', content: postHistoryInstructions });
-  return { systemPrompt, characterDefinitions, activatedCharacterBookEntries, chatHistory: history, postHistoryInstructions, messages };
+
+  if (postHistoryInstructions) {
+    messages.push({ role: 'system', content: `${postHistoryInstructions}\n\n${languageGuard}` });
+  }
+
+  return {
+    systemPrompt,
+    characterDefinitions,
+    activatedCharacterBookEntries,
+    chatHistory: history,
+    chatMemory,
+    postHistoryInstructions,
+    messages,
+  };
 }
 
 export function buildStartChatPayload(input: {
-  character: any; language?: 'de' | 'en'; storyContext?: any; scenarioOverride?: string;
+  character: any;
+  language?: 'de' | 'en';
+  storyContext?: any;
+  scenarioOverride?: string;
 }) {
   const language = input.language || 'de';
   const character = input.scenarioOverride !== undefined
@@ -184,8 +247,8 @@ export function resolveGreeting(character: any, selectedAlternateIndex?: number)
   const greeting = selected !== undefined
     ? selected
     : character?.firstMes !== undefined
-    ? character.firstMes
-    : character?.startPrompt ?? '';
+      ? character.firstMes
+      : character?.startPrompt ?? '';
   return applyPromptMacros(greeting, {
     char: character?.name?.trim() || 'Character',
     user: character?.playerAddressName?.trim() || 'User',
