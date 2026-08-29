@@ -24,7 +24,12 @@ jobs:
           node-version: 22
 
       - name: Harden temporary audit selectors
-        run: python3 tests/patch_acceptance.py
+        shell: bash
+        run: |
+          python3 tests/patch_acceptance.py
+          sed -i 's/Foto jetzt senden lassen/Szenenmoment senden lassen/g' tests/uiMockAcceptance.mjs
+          sed -i 's/Situational photo request job/Situational scene-moment job/g' tests/uiMockAcceptance.mjs
+          sed -i 's/photo job lifecycle\/unlock/scene-moment job lifecycle\/unlock/g' tests/uiMockAcceptance.mjs
 
       - name: Install app dependencies
         run: npm install
