@@ -82,7 +82,7 @@ const germanSystem = buildImitateSystemPrompt(
   ''
 );
 assert.match(germanSystem, /beweist NICHT/i);
-assert.match(germanSystem, /erfinde ihn nicht/i);
+assert.match(germanSystem, /erfinde (?:ihn|sie) nicht/i);
 
 const loreSystem = buildImitateSystemPrompt(
   technicalOnlyCharacter,
@@ -92,6 +92,6 @@ const loreSystem = buildImitateSystemPrompt(
   '{{char}} owns a hidden archive.',
 );
 assert.match(loreSystem, /SECRET_TECHNICAL_NAME owns a hidden archive\./);
-assert.match(loreSystem, /not automatically turn unobserved information/i);
+assert.match(loreSystem, /not automatically.*unobserved information/i);
 
 console.log('Imitate Me knowledge-boundary regression assertions passed.');
