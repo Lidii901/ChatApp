@@ -36,23 +36,9 @@ jobs:
           s = p.read_text()
           old = "  await page.getByRole('button', { name: 'Standardinhalte wiederherstellen' }).click();\n  await page.getByRole('button', { name: 'Abbrechen' }).click();"
           new = "  await page.getByRole('button', { name: 'Standardinhalte wiederherstellen' }).click();\n  await page.getByRole('main').getByRole('button', { name: 'Abbrechen', exact: true }).click();"
-          if old not in s:
-              raise SystemExit('reset cancel selector block not found')
-          s = s.replace(old, new, 1)
-
-          old = "  await backupInput.setInputFiles(backupPath);\n  await page.locator('#import-export-modal').waitFor({ state: 'detached', timeout: 8000 });\n  await page.locator('#nav-tab-characters').click();"
-          new = """  await backupInput.setInputFiles(backupPath);
-  await page.waitForTimeout(1800);
-  const restoreModal = page.locator('#import-export-modal');
-  if (await restoreModal.count()) {
-    const modalText = ((await restoreModal.textContent()) || '').replace(/\\s+/g, ' ').slice(0, 1200);
-    const savedNames = await page.evaluate(() => JSON.parse(localStorage.getItem('rp_characters_v2') || '[]').map(c => c.name));
-    throw new Error(`Backup restore modal remained open. modal=${modalText} savedCharacters=${JSON.stringify(savedNames)}`);
-  }
-  await page.locator('#nav-tab-characters').click();"""
-          if old not in s:
-              raise SystemExit('backup restore diagnostic block not found')
-          p.write_text(s.replace(old, new, 1))
+          if old in s:
+              s = s.replace(old, new, 1)
+          p.write_text(s)
           PY
 
       - name: Install app dependencies
