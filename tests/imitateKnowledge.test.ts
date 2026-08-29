@@ -43,9 +43,23 @@ assert.equal(
   false,
   'Conversation speaker labels must stay generic and must not expose the technical character name.'
 );
-assert.match(englishSystem, /does NOT prove reciprocal familiarity/i);
-assert.match(englishSystem, /do not invent it/i);
+assert.match(englishSystem, /does NOT prove that the player knows this/i);
+assert.match(englishSystem, /do not invent prior familiarity/i);
 assert.match(englishUserPrompt, /do not invent prior familiarity/i);
+assert.match(englishSystem, /Default to first-person singular/i);
+assert.match(englishSystem, /private thoughts, internal narration, unseen actions/i);
+assert.match(englishUserPrompt, /private thoughts, internal narration, unseen actions/i);
+assert.match(englishUserPrompt, /certainty about hidden actions/i);
+
+const styledSystem = buildImitateSystemPrompt(
+  technicalOnlyCharacter,
+  emptyContext,
+  ['She folds her arms and looks toward the door.'],
+  'en',
+  ''
+);
+assert.match(styledSystem, /Match the player perspective actually established by the style examples/i);
+assert.doesNotMatch(styledSystem, /There are no player writing-style examples yet/i);
 
 const establishedRelationshipCharacter: any = {
   ...technicalOnlyCharacter,
@@ -82,7 +96,7 @@ const germanSystem = buildImitateSystemPrompt(
   ''
 );
 assert.match(germanSystem, /beweist NICHT/i);
-assert.match(germanSystem, /erfinde (?:ihn|sie) nicht/i);
+assert.match(germanSystem, /Erfinde keine frühere Bekanntschaft/i);
 
 const loreSystem = buildImitateSystemPrompt(
   technicalOnlyCharacter,
@@ -92,6 +106,6 @@ const loreSystem = buildImitateSystemPrompt(
   '{{char}} owns a hidden archive.',
 );
 assert.match(loreSystem, /SECRET_TECHNICAL_NAME owns a hidden archive\./);
-assert.match(loreSystem, /unobserved information.*not automatically/i);
+assert.match(loreSystem, /Hidden details.*NOT automatically known/i);
 
 console.log('Imitate Me knowledge-boundary regression assertions passed.');

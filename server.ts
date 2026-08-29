@@ -134,32 +134,34 @@ function buildImitateEvidenceSections(
   ].filter(Boolean).join('\n\n');
 
   if (language === 'de') {
-    return `=== KONTINUITÄT & WISSEN DER SPIELERFIGUR ===
+    return `=== OBJEKTIVE KONTINUITÄTSQUELLEN ===
 ${continuity || 'Keine zusätzlichen Kontinuitätsangaben vorhanden.'}
 
 === CARD-/WELTREFERENZ ===
 ${worldReference || 'Keine zusätzliche Card-/Lore-Referenz vorhanden.'}
 
-WICHTIG ZUR WISSENSGRENZE:
+WICHTIG ZUR WISSENSGRENZE DER SPIELERFIGUR:
 - Technische Metadaten wie der Character-Card-Name oder interne Sprecherlabels sind NICHT automatisch Wissen der Spielerfigur.
-- Beziehung, frühere Begegnung, Vertrautheit, Namenskenntnis oder gemeinsames Erlebnis dürfen nur als bereits bekannt gelten, wenn Scenario, Chat Memory oder tatsächlicher Chatverlauf sie belegen.
-- Dass die andere Figur den Namen der Spielerfigur kennt, beweist NICHT die umgekehrte Vertrautheit.
-- Description und Lore sind Welt-/Card-Referenz. Nicht beobachtete Informationen daraus sind nicht automatisch Wissen der Spielerfigur.
-- Wenn Bekanntschaft oder Vorgeschichte nicht belegt sind, erfinde sie nicht.`;
+- Scenario, Chat Memory, Description und Lore können objektive Welt- oder Beziehungstatsachen enthalten. Verborgene Details daraus sind NICHT automatisch Wissen der Spielerfigur.
+- Die Spielerfigur kennt nur Dinge, die für sie ausdrücklich als bekannt etabliert sind, die sie selbst erlebt/geschrieben hat oder die sie in der Szene tatsächlich wahrnehmen bzw. von der anderen Figur hören konnte.
+- Private Gedanken, innere Monologe, unbeobachtete Handlungen, geheime Beobachtungen oder verborgenes Wissen der anderen Figur werden NICHT zu Wissen der Spielerfigur, nur weil sie im Character-Text oder in einer CHARACTER-Nachricht stehen.
+- Dass die andere Figur den Namen der Spielerfigur kennt oder sie heimlich beobachtet hat, beweist NICHT, dass die Spielerfigur davon weiss oder die andere Figur kennt.
+- Erfinde keine frühere Bekanntschaft und lass die Spielerfigur keine verborgenen Handlungen als Tatsache behaupten, solange sie diese nicht wahrgenommen oder erfahren hat.`;
   }
 
-  return `=== PLAYER CONTINUITY & KNOWLEDGE ===
+  return `=== OBJECTIVE CONTINUITY SOURCES ===
 ${continuity || 'No additional continuity facts are provided.'}
 
 === CARD / WORLD REFERENCE ===
 ${worldReference || 'No additional card or lore reference is provided.'}
 
-IMPORTANT KNOWLEDGE BOUNDARY:
+IMPORTANT PLAYER-KNOWLEDGE BOUNDARY:
 - Technical metadata such as the Character Card name or internal speaker labels is NOT automatically knowledge possessed by the player character.
-- A prior relationship, previous meeting, familiarity, knowledge of a name, or shared history may only be treated as established when Scenario, Chat Memory, or the actual conversation history establishes it.
-- The other character knowing the player's name does NOT prove reciprocal familiarity.
-- Description and Lore are world/card reference; unobserved information there is not automatically player-character knowledge.
-- If familiarity or shared history is not established, do not invent it.`;
+- Scenario, Chat Memory, Description and Lore may establish objective world or relationship facts. Hidden details in those sources are NOT automatically known by the player character.
+- The player character knows only facts explicitly established as known to them, facts they personally experienced/wrote, or things they could actually perceive in-scene or were directly told by the other character.
+- Private thoughts, internal narration, unseen actions, secret observation or hidden knowledge belonging to the other character do NOT become player knowledge merely because they appear in Character text or a CHARACTER message.
+- The other character knowing the player's name or secretly observing the player does NOT prove that the player knows this or knows the other character.
+- Do not invent prior familiarity and do not make the player assert hidden actions as fact unless the player actually perceived or learned them.`;
 }
 
 // Chub exposes an Impersonation Prompt. We do the same, while keeping only a
@@ -180,10 +182,18 @@ export function buildImitateSystemPrompt(
   const examples = (userPastMessages || []).slice(-5).map((message, index) =>
     `[${language === 'de' ? 'Stilbeispiel' : 'Style example'} ${index + 1}]:\n${message.trim()}`
   ).join('\n\n');
+  const perspectiveRule = examples
+    ? (language === 'de'
+        ? 'PERSPEKTIVE: Übernimm die in den Stilbeispielen tatsächlich etablierte Perspektive der Spielerfigur.'
+        : 'PERSPECTIVE: Match the player perspective actually established by the style examples.')
+    : (language === 'de'
+        ? 'PERSPEKTIVE: Es gibt noch keine Stilbeispiele der Spielerfigur. Verwende standardmässig die erste Person Singular (ich/mein/mir/mich) und erzähle die Spielerfigur NICHT in der dritten Person.'
+        : 'PERSPECTIVE: There are no player writing-style examples yet. Default to first-person singular (I/my/me) and do NOT narrate the player character in third person.');
 
   return [
     configuredPrompt,
     evidenceSections,
+    perspectiveRule,
     examples
       ? `${language === 'de' ? '=== BISHERIGE STILBEISPIELE VON' : '=== PAST WRITING-STYLE EXAMPLES FROM'} ${playerAddress.toUpperCase()} ===\n${examples}\n\n${language === 'de' ? 'Nutze sie nur für Stimme, Perspektive und Stil. Übertrage keine nicht belegten Fakten.' : 'Use them only for voice, perspective, and style. Do not carry unsupported facts into the current scene.'}`
       : '',
@@ -226,8 +236,8 @@ export function buildImitateUserPrompt(
   }
 
   prompt += language === 'de'
-    ? `AUFGABE: Verfasse jetzt ausschliesslich den nächsten Spielzug von ${playerAddress}. Bewahre exakt den bereits belegten Beziehungs- und Wissensstand; erfinde keine frühere Bekanntschaft.`
-    : `TASK: Write only ${playerAddress}'s next roleplay turn. Preserve exactly the relationship and knowledge state already established; do not invent prior familiarity.`;
+    ? `AUFGABE: Verfasse jetzt ausschliesslich den nächsten Spielzug von ${playerAddress}. Bewahre exakt den belegten Beziehungs- und Wissensstand. Behandle private Gedanken, innere Erzählung, unbeobachtete Handlungen und geheime Informationen der anderen Figur NICHT als Wissen von ${playerAddress}. Erfinde keine frühere Bekanntschaft und keine Gewissheit über verborgene Handlungen.`
+    : `TASK: Write only ${playerAddress}'s next roleplay turn. Preserve exactly the established relationship and knowledge state. Do NOT treat the other character's private thoughts, internal narration, unseen actions or secret information as knowledge possessed by ${playerAddress}. Do not invent prior familiarity or certainty about hidden actions.`;
   return prompt;
 }
 

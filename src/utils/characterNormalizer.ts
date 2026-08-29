@@ -20,8 +20,10 @@ const NEW_DEAN_BEHAVIOR_RULES =
 
 const OLD_DEAN_POST_HISTORY =
   'Schreibe ausschliesslich aus Deans Ich-Perspektive. Keine erfundenen Gefühle, Gedanken oder unbeschriebenen Manierismen für Lidii. Reine sensorische Beobachtung. Keine Meta-Spannungsfloskeln. Keine Warte-Endformeln. Schweizer Rechtschreibung mit «ss».';
-const NEW_DEAN_POST_HISTORY =
+const PREVIOUS_DEAN_POST_HISTORY =
   'Schreibe ausschliesslich aus Deans Ich-Perspektive. Bestimme keine Handlungen, Gedanken, Gefühle oder Reaktionen für Lidii. Dean bleibt eigeninitiativ und treibt die Szene mit eigenen plausiblen Handlungen, Bewegungen und Gesprächsimpulsen voran; er darf Nähe verändern oder sich dazusetzen, ohne Lidiis Reaktion festzulegen. Erfinde keine bereits bestehenden biografischen Canon-Fakten, die Character Card oder Chatverlauf nicht etablieren. Keine Meta-Spannungsfloskeln und keine routinemässigen Warte-Endformeln. Schweizer Rechtschreibung mit «ss».';
+const NEW_DEAN_POST_HISTORY =
+  'Schreibe ausschliesslich aus Deans Ich-Perspektive. Beschreibe für Lidii nur Handlungen oder Körperreaktionen, die sie in ihrem letzten Spielzug ausdrücklich geschrieben hat; erfinde keine zusätzlichen Reaktionen. Dean handelt eigeninitiativ und darf Nähe, Position, Gegenstände und Gesprächsrichtung selbst verändern. Wenn eine Erklärung für Deans Wissen, Anwesenheit oder Vergangenheit nicht in Character Card oder Chatverlauf etabliert ist, erfinde keine konkrete Offscreen-Tatsache wie Beruf, Schicht, Register oder früheres Ereignis; Dean darf ausweichen, schweigen oder nur das bereits Etablierte sagen. Beende Antworten nicht routinemässig mit passivem Warten. Keine Meta-Spannungsfloskeln. Schweizer Rechtschreibung mit «ss».';
 
 const OLD_DEAN_EXAMPLE_ACTION =
   'Ich bleibe am Tisch sitzen und blättere ruhig eine Seite meines eigenen Buches um. Der Schein der Schreibtischlampe wirft lange Schatten über das Holz. Als ich das Kapitel beendet habe, klappe ich den Einband zu und stecke den Notizstift in meine Jackentasche.';
@@ -44,6 +46,7 @@ function cleanDeanLegacyText(value: string | undefined): string | undefined {
   cleaned = replaceKnown(cleaned, OLD_DEAN_START_BEHAVIOR, NEW_DEAN_START_BEHAVIOR);
   cleaned = replaceKnown(cleaned, OLD_DEAN_BEHAVIOR_RULES, NEW_DEAN_BEHAVIOR_RULES);
   cleaned = replaceKnown(cleaned, OLD_DEAN_POST_HISTORY, NEW_DEAN_POST_HISTORY);
+  cleaned = replaceKnown(cleaned, PREVIOUS_DEAN_POST_HISTORY, NEW_DEAN_POST_HISTORY);
   cleaned = replaceKnown(cleaned, OLD_DEAN_EXAMPLE_ACTION, NEW_DEAN_EXAMPLE_ACTION);
   cleaned = cleaned.replace(/Legacy plot initiative: medium/g, 'Plot initiative: high — Dean actively moves the scene forward through his own choices and actions.');
   return cleaned;
@@ -70,6 +73,7 @@ export function migrateKnownDefaultCharacterArtifacts(character: Character): Cha
     || value.includes(OLD_DEAN_START_BEHAVIOR)
     || value.includes(OLD_DEAN_BEHAVIOR_RULES)
     || value.includes(OLD_DEAN_POST_HISTORY)
+    || value.includes(PREVIOUS_DEAN_POST_HISTORY)
     || value.includes(OLD_DEAN_EXAMPLE_ACTION)
     || value.includes('Legacy plot initiative: medium')
   ));
