@@ -52,12 +52,23 @@ export function removePendingJob(jobId: string): void {
   savePendingJobs(current);
 }
 
+export const DEFAULT_IMPERSONATION_PROMPT = `Write {{user}}'s next response based only on the established conversation, scenario, user profile/persona and chat memory. Match {{user}}'s established writing style and perspective. Do not write actions, dialogue, thoughts or decisions for {{char}}. Do not invent prior meetings, relationship history, names, memories, knowledge or familiarity that are not established in the available context.`;
+
 export const DEFAULT_SETTINGS: ModelSettings = {
   provider: 'openrouter',
   modelName: '',
   temperature: 0.88,
   maxOutputTokens: 2200,
-  contextWindowSize: 14,
+  contextSizeTokens: 32768,
+  topP: 1,
+  frequencyPenalty: 0,
+  presencePenalty: 0,
+  repetitionPenalty: 1,
+  promptNote: '',
+  promptNoteDepth: 1,
+  promptNoteRole: 'system',
+  assistantPrefill: '',
+  impersonationPrompt: DEFAULT_IMPERSONATION_PROMPT,
 };
 
 /**
@@ -181,9 +192,7 @@ export function saveCharacters(characters: Character[]): void {
 export function loadActiveCharacterId(characters: Character[]): string {
   try {
     const saved = localStorage.getItem(STORAGE_KEY_ACTIVE_CHAR);
-    if (saved && characters.some((c) => c.id === saved)) {
-      return saved;
-    }
+    if (saved && characters.some((c) => c.id === saved)) return saved;
   } catch (e) {
     console.error('Failed to load active char id', e);
   }
@@ -265,11 +274,18 @@ export function loadSavedSettings(): ModelSettings {
     const raw = localStorage.getItem(STORAGE_KEY_SETTINGS);
     if (raw) {
       const parsed = JSON.parse(raw);
-      return {
+      const migrated: ModelSettings = {
         ...DEFAULT_SETTINGS,
         ...parsed,
         provider: 'openrouter',
+        contextSizeTokens:
+          typeof parsed.contextSizeTokens === 'number' && parsed.contextSizeTokens >= 2048
+            ? parsed.contextSizeTokens
+            : DEFAULT_SETTINGS.contextSizeTokens,
       };
+      // contextWindowSize was the old message-count cutoff. Keep it only as inert
+      // compatibility data; never reinterpret 14 messages as 14 tokens.
+      return migrated;
     }
   } catch (e) {
     console.error('Failed to load settings', e);
@@ -288,9 +304,7 @@ export function saveSettings(settings: ModelSettings): void {
 export function loadSavedLogs(): ApiLog[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_LOGS);
-    if (raw) {
-      return JSON.parse(raw);
-    }
+    if (raw) return JSON.parse(raw);
   } catch (e) {
     console.error('Failed to load logs', e);
   }
@@ -301,7 +315,7 @@ export function saveLogs(logs: ApiLog[]): void {
   try {
     localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(logs.slice(-60)));
   } catch (e) {
-    console.error('Failed to save logs', e);
+    console.error('Failed to save logs to localStorage', e);
   }
 }
 
@@ -328,15 +342,23 @@ export function importFullRPState(jsonString: string): {
   legacyContext?: StoryContext;
 } {
   const parsed = JSON.parse(jsonString);
-  if (!parsed) {
-    throw new Error('Ungültiges Dateiformat.');
-  }
+  if (!parsed) throw new Error('Ungültiges Dateiformat.');
+
+  const importedSettings: ModelSettings = {
+    ...DEFAULT_SETTINGS,
+    ...(parsed.settings || {}),
+    provider: 'openrouter',
+    contextSizeTokens:
+      typeof parsed.settings?.contextSizeTokens === 'number' && parsed.settings.contextSizeTokens >= 2048
+        ? parsed.settings.contextSizeTokens
+        : DEFAULT_SETTINGS.contextSizeTokens,
+  };
 
   if (Array.isArray(parsed.characters) && Array.isArray(parsed.chats)) {
     return {
       characters: parsed.characters.map(normalizeLegacyCharacterToV2),
       chats: parsed.chats,
-      settings: parsed.settings || DEFAULT_SETTINGS,
+      settings: importedSettings,
     };
   }
 
@@ -344,7 +366,7 @@ export function importFullRPState(jsonString: string): {
     return {
       legacyMessages: parsed.messages,
       legacyContext: parsed.context,
-      settings: parsed.settings || DEFAULT_SETTINGS,
+      settings: importedSettings,
     };
   }
 
