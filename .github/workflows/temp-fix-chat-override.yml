@@ -26,18 +26,13 @@ jobs:
 
           p = Path('src/components/ImportExportModal.tsx')
           s = p.read_text()
-          old = '''          if (state.characters && state.chats) {
-            onRestoreFullBackup({
-              characters: state.characters,
-              chats: state.chats,
-              settings: state.settings,
-            });
-            setStatusMessage({
-              type: 'success',
-              text: 'Vollständiges Multi-Charakter Backup erfolgreich wiederhergestellt!',
-            });
-          } else if (state.legacyMessages) {'''
-          new = '''          if (state.characters && state.chats) {
+          start_marker = '          if (state.characters && state.chats) {'
+          end_marker = '          } else if (state.legacyMessages) {'
+          start = s.find(start_marker)
+          end = s.find(end_marker, start)
+          if start < 0 or end < 0:
+            raise SystemExit('full-backup restore branch not found')
+          replacement = '''          if (state.characters && state.chats) {
             // A full restore replaces the app state. Close this modal before handing
             // the restored state to the parent so stale modal UI cannot survive the
             // character/chat replacement or block the restored navigation.
@@ -49,10 +44,8 @@ jobs:
               settings: state.settings,
             });
             return;
-          } else if (state.legacyMessages) {'''
-          if old not in s:
-            raise SystemExit('full-backup restore block not found')
-          p.write_text(s.replace(old, new, 1))
+'''
+          p.write_text(s[:start] + replacement + s[end:])
           PY
 
       - name: Commit backup restore fix
