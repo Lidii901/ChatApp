@@ -15,7 +15,8 @@ app.use(express.json({ limit: '15mb' }));
 // Keep the current free OpenRouter models. The Chub-parity work is prompt/context work,
 // not a model switch.
 export const CHAT_DEFAULT_MODEL = 'nvidia/nemotron-3-super-120b-a12b:free';
-export const IMITATE_DEFAULT_MODEL = 'nvidia/nemotron-3-ultra-550b-a55b:free';
+export const IMITATE_DEFAULT_MODEL = 'nvidia/nemotron-3-super-120b-a12b:free';
+export const IMITATE_FALLBACK_MODEL = 'nvidia/nemotron-3-ultra-550b-a55b:free';
 export const SUMMARIZE_DEFAULT_MODEL = 'nvidia/nemotron-3-super-120b-a12b:free';
 export const FALLBACK_FREE_MODEL = 'google/gemma-4-26b-a4b-it:free';
 
@@ -443,6 +444,61 @@ function startGenerationMessages(payload: ReturnType<typeof buildStartChatPayloa
   ];
 }
 
+export function extractGreetingLocalizationOutput(raw: string): string {
+  const cleaned = cleanRoleplayOutput(String(raw || '')).trim();
+  if (!cleaned) throw new Error('Greeting localization returned no usable text.');
+
+  const tagged = cleaned.match(/<greeting>\s*([\s\S]*?)\s*<\/greeting>/i);
+  if (tagged?.[1]?.trim()) return tagged[1].trim();
+
+  const fenced = cleaned.match(/^```(?:text|markdown)?\s*\n([\s\S]*?)\n```$/i);
+  const candidate = (fenced?.[1] || cleaned).trim();
+  const suspiciousLead = /^(?:we need to|we should|the task|the instruction|original german|let['’]s translate|translation notes?|analysis\s*:)/i;
+  const suspiciousMeta = /(?:preserv(?:e|ing).*punctuation|we(?:'|’)ll translate|we(?:'|’)ll preserve|check punctuation|thus final english)/i;
+  if (suspiciousLead.test(candidate) || suspiciousMeta.test(candidate.slice(0, 1200))) {
+    throw new Error('Greeting localization returned analysis instead of the translated greeting.');
+  }
+  return candidate;
+}
+
+async function generateLocalizedGreeting(greeting: string, language: 'de' | 'en') {
+  const targetName = language === 'en' ? 'English' : 'German';
+  const systemPrompt = `You are a precise literary translator. Translate the supplied roleplay greeting into ${targetName}. If it is already fully in ${targetName}, keep it unchanged. Preserve meaning, point of view, tone, Markdown, paragraph breaks, proper names, dialogue and all double-curly-brace Character Card macros verbatim. Do not continue the scene and do not explain your work. Put ONLY the final greeting between <greeting> and </greeting> tags.`;
+  const request = {
+    systemPrompt,
+    messages: [{ role: 'user' as const, content: greeting }],
+    temperature: 0.05,
+    maxTokens: 1800,
+    topP: 1,
+    frequencyPenalty: 0,
+    presencePenalty: 0,
+    repetitionPenalty: 1,
+  };
+
+  const attempts = [
+    { model: FALLBACK_FREE_MODEL, timeoutMs: 45000 },
+    { model: CHAT_DEFAULT_MODEL, timeoutMs: 60000 },
+  ];
+  let lastError: any;
+  for (const attempt of attempts) {
+    try {
+      const result = await generateOpenRouterResponse({
+        ...request,
+        defaultModel: attempt.model,
+        timeoutMs: attempt.timeoutMs,
+      });
+      return {
+        ...result,
+        text: extractGreetingLocalizationOutput(result.text),
+      };
+    } catch (error: any) {
+      lastError = error;
+      console.warn(`Greeting localization with ${attempt.model} failed: ${error?.message || error}`);
+    }
+  }
+  throw new Error(lastError?.message || 'Greeting localization failed.');
+}
+
 async function generateCharacterReply(character: any, messages: any[], storyContext: any, language: 'de' | 'en', settings: any) {
   const promptConfig = promptConfigFromSettings(settings);
   const payload = buildChatPayload({ character, messages, storyContext, language, promptConfig });
@@ -503,27 +559,27 @@ async function generateImitateReply(character: any, messages: any[], storyContex
       ...request,
       defaultModel: IMITATE_DEFAULT_MODEL,
       modelOverride: settings?.modelName,
-      timeoutMs: 120000,
+      timeoutMs: String(settings?.modelName || '').trim() ? 90000 : 70000,
     });
   } catch (primaryError: any) {
-    // Respect an explicit user model override. Automatic fallback only applies to
-    // the built-in free Imitate model.
+    // Respect an explicit model override. Automatic fallback only applies to the
+    // built-in free Imitate model.
     if (String(settings?.modelName || '').trim()) throw primaryError;
 
     console.warn(
       `Imitate model ${IMITATE_DEFAULT_MODEL} failed (${primaryError?.message || primaryError}). ` +
-      `Retrying with free chat model ${CHAT_DEFAULT_MODEL}...`
+      `Retrying with free quality fallback ${IMITATE_FALLBACK_MODEL}...`
     );
 
     try {
       return await generateOpenRouterResponse({
         ...request,
-        defaultModel: CHAT_DEFAULT_MODEL,
-        timeoutMs: 120000,
+        defaultModel: IMITATE_FALLBACK_MODEL,
+        timeoutMs: 90000,
       });
     } catch (fallbackError: any) {
       throw new Error(
-        `Imitate Me konnte weder mit ${IMITATE_DEFAULT_MODEL} noch mit ${CHAT_DEFAULT_MODEL} einen Entwurf erzeugen. ` +
+        `Imitate Me konnte weder mit ${IMITATE_DEFAULT_MODEL} noch mit ${IMITATE_FALLBACK_MODEL} einen Entwurf erzeugen. ` +
         `Letzter Fehler: ${fallbackError?.message || fallbackError}`
       );
     }
@@ -785,6 +841,22 @@ app.post('/api/debug/inspect-prompt', (req: Request, res: Response) => {
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Fehler bei der Prompt-Inspektion.' });
+  }
+});
+
+app.post('/api/localize-greeting', async (req: Request, res: Response) => {
+  try {
+    const { greeting, language = 'de' } = req.body || {};
+    if (typeof greeting !== 'string' || !greeting.trim()) {
+      return res.status(400).json({ error: 'Greeting text is required.' });
+    }
+    if (language !== 'de' && language !== 'en') {
+      return res.status(400).json({ error: 'Unsupported greeting language.' });
+    }
+    const result = await generateLocalizedGreeting(greeting, language);
+    res.json({ content: result.text, modelUsed: result.modelUsed, latencyMs: result.latencyMs });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Greeting localization failed.' });
   }
 });
 

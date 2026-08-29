@@ -53,41 +53,10 @@ async function localizeGreetingForChat(greeting: string, language: 'de' | 'en'):
   const cached = greetingLocalizationCache.get(cacheKey);
   if (cached !== undefined) return cached;
 
-  const targetName = language === 'en' ? 'English' : 'German';
-  const translator: Character = {
-    id: '__greeting-localizer__',
-    name: 'Translator',
-    avatarUrl: '',
-    appearance: '',
-    description: '',
-    personality: '',
-    background: '',
-    relationshipToPlayer: '',
-    writingStyle: '',
-    toneOfVoice: '',
-    typicalPhrases: '',
-    playerAddressName: 'User',
-    thoughtsEnabled: false,
-    initiativeLevel: 'low',
-    flirtBehavior: 'none',
-    dominanceLevel: 'balanced',
-    behaviorRules: '',
-    memories: [],
-    createdAt: 0,
-    updatedAt: 0,
-    systemPrompt: `You are a precise literary translator. Translate the user's roleplay greeting into ${targetName}. If it is already fully in ${targetName}, return it unchanged. Preserve meaning, point of view, tone, Markdown, paragraph breaks, proper names and punctuation. Preserve all Character Card double-curly-brace macro placeholders verbatim and never expand or replace them. Do not add, remove, reinterpret, continue or explain anything.`,
-    postHistoryInstructions: `Return ONLY the greeting text in ${targetName}. No commentary, labels, quotation wrapper or explanation.`,
-  };
-
-  const response = await fetch('/api/chat', {
+  const response = await fetch('/api/localize-greeting', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      character: translator,
-      messages: [{ role: 'lidii', content: greeting }],
-      language,
-      settings: { temperature: 0.1, maxOutputTokens: 1800, contextWindowSize: 2 },
-    }),
+    body: JSON.stringify({ greeting, language }),
   });
 
   const data = await response.json();

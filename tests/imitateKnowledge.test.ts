@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 
 process.env.NODE_ENV = 'test';
 
-const { buildImitateSystemPrompt, buildImitateUserPrompt } = await import('../server');
+const { buildImitateSystemPrompt, buildImitateUserPrompt, extractGreetingLocalizationOutput } = await import('../server');
 
 const technicalOnlyCharacter: any = {
   id: 'char-test',
@@ -107,5 +107,14 @@ const loreSystem = buildImitateSystemPrompt(
 );
 assert.match(loreSystem, /SECRET_TECHNICAL_NAME owns a hidden archive\./);
 assert.match(loreSystem, /Hidden details.*NOT automatically known/i);
+
+assert.equal(
+  extractGreetingLocalizationOutput('<greeting>The rain falls.\n\n*Quiet.*</greeting>'),
+  'The rain falls.\n\n*Quiet.*'
+);
+assert.throws(
+  () => extractGreetingLocalizationOutput('We need to translate the German greeting into English, preserving punctuation. Thus final English follows.'),
+  /analysis instead of the translated greeting/i
+);
 
 console.log('Imitate Me knowledge-boundary regression assertions passed.');
