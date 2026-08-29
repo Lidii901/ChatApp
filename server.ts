@@ -401,7 +401,11 @@ export async function generateOpenRouterResponse({
     }
   }
 
-  return { text: cleanRoleplayOutput(text), modelUsed, latencyMs: Date.now() - startTime };
+  const cleanedText = cleanRoleplayOutput(text);
+  if (!cleanedText) {
+    throw new Error(`OpenRouter lieferte für Modell ${modelUsed} keinen nutzbaren finalen Antworttext.`);
+  }
+  return { text: cleanedText, modelUsed, latencyMs: Date.now() - startTime };
 }
 
 function createJob(type: ServerJob['type'], characterId?: string, chatId?: string): ServerJob {
@@ -478,14 +482,42 @@ async function generateImitateReply(character: any, messages: any[], storyContex
   );
   const prompt = buildImitateUserPrompt(character, packedMessages, language, Number.POSITIVE_INFINITY);
   const generation = generationSettings(settings, { temperature: 0.85, maxTokens: 1200 });
-  return generateOpenRouterResponse({
+  const request = {
     systemPrompt,
-    messages: [{ role: 'user', content: prompt }],
+    messages: [{ role: 'user' as const, content: prompt }],
     ...generation,
-    defaultModel: IMITATE_DEFAULT_MODEL,
-    modelOverride: settings?.modelName,
-    timeoutMs: 180000,
-  });
+  };
+
+  try {
+    return await generateOpenRouterResponse({
+      ...request,
+      defaultModel: IMITATE_DEFAULT_MODEL,
+      modelOverride: settings?.modelName,
+      timeoutMs: 120000,
+    });
+  } catch (primaryError: any) {
+    // Respect an explicit user model override. Automatic fallback only applies to
+    // the built-in free Imitate model.
+    if (String(settings?.modelName || '').trim()) throw primaryError;
+
+    console.warn(
+      `Imitate model ${IMITATE_DEFAULT_MODEL} failed (${primaryError?.message || primaryError}). ` +
+      `Retrying with free chat model ${CHAT_DEFAULT_MODEL}...`
+    );
+
+    try {
+      return await generateOpenRouterResponse({
+        ...request,
+        defaultModel: CHAT_DEFAULT_MODEL,
+        timeoutMs: 120000,
+      });
+    } catch (fallbackError: any) {
+      throw new Error(
+        `Imitate Me konnte weder mit ${IMITATE_DEFAULT_MODEL} noch mit ${CHAT_DEFAULT_MODEL} einen Entwurf erzeugen. ` +
+        `Letzter Fehler: ${fallbackError?.message || fallbackError}`
+      );
+    }
+  }
 }
 
 // -------------------------------------------------------------

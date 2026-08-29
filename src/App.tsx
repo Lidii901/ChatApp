@@ -501,21 +501,48 @@ export default function App() {
     const interval = setInterval(async () => {
       try {
         const res = await fetch(`/api/jobs/${activeImitateJobId}`);
-        if (!res.ok) return;
+        if (!res.ok) {
+          if (isSubscribed && res.status === 404) {
+            clearInterval(interval);
+            removePendingJob(activeImitateJobId);
+            setActiveImitateJobId(null);
+            setIsImitating(false);
+            const message = 'Der Imitate-Me-Job ist auf dem Server nicht mehr vorhanden. Bitte erneut versuchen.';
+            setErrorMessage(message);
+            addLog({
+              type: 'error',
+              status: 'error',
+              model: settings.modelName || 'openrouter',
+              message,
+            });
+          }
+          return;
+        }
         const job = await res.json();
         if (job.status === 'completed' && isSubscribed) {
           clearInterval(interval);
           removePendingJob(activeImitateJobId);
           setActiveImitateJobId(null);
           setIsImitating(false);
-          if (job.result?.draft) {
-            setInput((prev) => (prev.trim() ? `${prev}\n\n${job.result.draft}` : job.result.draft));
+          const draft = String(job.result?.draft || '').trim();
+          if (draft) {
+            setInput((prev) => (prev.trim() ? `${prev}\n\n${draft}` : draft));
             addLog({
               type: 'imitate',
               status: 'success',
               model: job.result.modelUsed || settings.modelName || 'openrouter',
               latencyMs: job.result.latencyMs,
               message: 'Imitate Me Entwurf in Eingabefeld eingefügt',
+            });
+          } else {
+            const message = 'Imitate Me wurde beendet, aber das Modell hat keinen nutzbaren Entwurf geliefert.';
+            setErrorMessage(message);
+            addLog({
+              type: 'error',
+              status: 'error',
+              model: job.result?.modelUsed || settings.modelName || 'openrouter',
+              latencyMs: job.result?.latencyMs,
+              message,
             });
           }
         } else if ((job.status === 'failed' || job.status === 'error') && isSubscribed) {
