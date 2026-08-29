@@ -29,6 +29,8 @@ jobs:
           p = Path('tests/fullAcceptanceAudit.mjs')
           s = p.read_text()
           s = s.replace("await page.getByText('Gespeichert').waitFor();", "await page.getByRole('button', { name: 'Gespeichert', exact: true }).waitFor();")
+          s = s.replace("return page.locator('[id^=\"message-\"]').first();", "const firstMessage = page.locator('[id^=\"message-\"]').first();\n    await firstMessage.waitFor({ state: 'visible', timeout: 180000 });\n    return firstMessage;")
+          s = s.replace("await page.getByRole('button', { name: 'Schliessen' }).click();", "await page.locator('#profile-modal button[title=\"Schliessen\"]').click();")
           p.write_text(s)
           PY
 
