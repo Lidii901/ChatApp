@@ -200,24 +200,22 @@ export default function App() {
       })
       .catch((err) => console.warn('Server config error', err));
 
-    const pendingJobs = loadPendingJobs();
+    // Restore only jobs that belong to the chat currently being shown.
+    // Jobs from other chats stay persisted and can be resumed when that chat is opened.
+    const pendingJobs = loadPendingJobs().filter((job) => job.chatId === activeChatId);
     if (pendingJobs.length > 0) {
       const chatJob = pendingJobs.find((j) => j.type === 'chat' || j.type === 'start-chat');
-      if (chatJob) {
-        setActiveChatJobId(chatJob.id);
-        setIsGenerating(true);
-      }
+      if (chatJob) setActiveChatJobId(chatJob.id);
+
       const imitateJob = pendingJobs.find((j) => j.type === 'imitate');
-      if (imitateJob) {
-        setActiveImitateJobId(imitateJob.id);
-        setIsImitating(true);
-      }
+      if (imitateJob) setActiveImitateJobId(imitateJob.id);
+
       const photoJob = pendingJobs.find((j) => j.type === 'photo');
-      if (photoJob) {
-        setActivePhotoJobId(photoJob.id);
-        setIsPhotoJobRunning(true);
-        setIsGenerating(true);
-      }
+      if (photoJob) setActivePhotoJobId(photoJob.id);
+
+      setIsImitating(Boolean(imitateJob));
+      setIsPhotoJobRunning(Boolean(photoJob));
+      setIsGenerating(Boolean(chatJob || photoJob));
     }
   }, []);
 
@@ -254,9 +252,24 @@ export default function App() {
     });
   };
 
+  const restorePendingStateForChat = (chatId: string) => {
+    const pendingJobs = loadPendingJobs().filter((job) => job.chatId === chatId);
+    const chatJob = pendingJobs.find((job) => job.type === 'chat' || job.type === 'start-chat');
+    const imitateJob = pendingJobs.find((job) => job.type === 'imitate');
+    const photoJob = pendingJobs.find((job) => job.type === 'photo');
+
+    setActiveChatJobId(chatJob?.id ?? null);
+    setActiveImitateJobId(imitateJob?.id ?? null);
+    setActivePhotoJobId(photoJob?.id ?? null);
+    setIsImitating(Boolean(imitateJob));
+    setIsPhotoJobRunning(Boolean(photoJob));
+    setIsGenerating(Boolean(chatJob || photoJob));
+  };
+
   const handleOpenChat = (chatId: string) => {
     const targetChat = chats.find((c) => c.id === chatId);
     if (targetChat) {
+      restorePendingStateForChat(targetChat.id);
       setActiveCharacterId(targetChat.characterId);
       setActiveChatId(targetChat.id);
       setCurrentView('chat');
@@ -267,8 +280,7 @@ export default function App() {
     setActiveCharacterId(charId);
     const existing = chats.filter((c) => c.characterId === charId);
     if (existing.length > 0) {
-      setActiveChatId(existing[0].id);
-      setCurrentView('chat');
+      handleOpenChat(existing[0].id);
     } else {
       void handleCreateNewChat(charId, undefined, activeChat?.language || 'de');
     }
@@ -334,6 +346,16 @@ export default function App() {
     };
 
     setChats((prev) => [...prev, newChat]);
+
+    // A job from the previously open chat must never make a fresh chat appear to be
+    // generating. Keep other-chat jobs persisted, but detach their UI state here.
+    setActiveChatJobId(null);
+    setActiveImitateJobId(null);
+    setActivePhotoJobId(null);
+    setIsGenerating(false);
+    setIsImitating(false);
+    setIsPhotoJobRunning(false);
+
     setActiveCharacterId(char.id);
     setActiveChatId(newChatId);
     setCurrentView('chat');
