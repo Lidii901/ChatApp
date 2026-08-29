@@ -1,4 +1,4 @@
-name: Temporary Chat Override Basis Fix
+name: Temporary Final Acceptance Fixes
 
 on:
   push:
@@ -19,18 +19,18 @@ jobs:
         with:
           ref: ui-mechat-rework
 
-      - name: Apply targeted fix
+      - name: Apply final targeted fixes
         run: python3 tests/fix_chat_override_basis.py
 
-      - name: Commit targeted app fix
+      - name: Commit final app fixes
         shell: bash
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add src/App.tsx src/components/ChatMenuDrawer.tsx
+          git add src/App.tsx src/components/ChatMenuDrawer.tsx src/components/CharacterEditorModal.tsx server.ts
           if git diff --cached --quiet; then
             echo 'No changes to commit.'
             exit 0
           fi
-          git commit -m 'Fix per-chat override reset to base character'
+          git commit -m 'Fix remaining acceptance issues'
           git push origin HEAD:ui-mechat-rework
