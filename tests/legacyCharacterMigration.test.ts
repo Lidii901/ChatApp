@@ -64,15 +64,27 @@ assert.equal(preserved.firstMes, '');
 assert.equal(preserved.mesExample, '');
 assert.equal(preserved.postHistoryInstructions, '');
 
+const oldDeanPersonality = 'Dominant, selbstbewusst, direkt, analytisch, ruhig unter Druck, aufmerksam, eigeninitiativ. Er besitzt eine unerschütterliche Präsenz, spricht überlegt und trocken, und lässt Situationen organisch entstehen, ohne Lidii Handlungen oder Gefühle vorzuschreiben.';
+const oldDeanStartBehavior = 'Dean beobachtet Lidii mit ruhiger, berechnender Dominanz und scharfem Blick. Er bleibt souverän, spricht tief und fordernd, lässt ihr aber vollen Raum zum Agieren und Reagieren, ohne sie körperlich einzuengen.';
+const oldDeanPostHistory = 'Schreibe ausschliesslich aus Deans Ich-Perspektive. Keine erfundenen Gefühle, Gedanken oder unbeschriebenen Manierismen für Lidii. Reine sensorische Beobachtung. Keine Meta-Spannungsfloskeln. Keine Warte-Endformeln. Schweizer Rechtschreibung mit «ss».';
+const oldDeanExampleAction = 'Ich bleibe am Tisch sitzen und blättere ruhig eine Seite meines eigenen Buches um. Der Schein der Schreibtischlampe wirft lange Schatten über das Holz. Als ich das Kapitel beendet habe, klappe ich den Einband zu und stecke den Notizstift in meine Jackentasche.';
+
 const oldDean: any = {
   ...legacy,
   id: 'char-dean',
   name: 'Dean',
   appearance: 'Dark coat. Lidii arbeitet als Bibliothekarin. Quiet presence.',
+  personality: oldDeanPersonality,
   relationshipToPlayer: 'Lidii arbeitet als Bibliothekarin. Dean has only observed her from afar.',
-  description: 'Appearance: dark coat.\n\nRelationship / prior context with {{user}}:\nLidii arbeitet als Bibliothekarin. Dean has only observed her from afar.',
+  description: `Appearance: dark coat.\n\nRelationship / prior context with {{user}}:\nLidii arbeitet als Bibliothekarin. Dean has only observed her from afar.\n\nBehavior:\n${oldDeanStartBehavior}\n\nLegacy plot initiative: medium`,
+  startBehavior: oldDeanStartBehavior,
+  postHistoryInstructions: oldDeanPostHistory,
   firstMes: 'Ich blieb einige Schritte vor deinem Schreibtisch stehen.',
   startPrompt: 'Ich blieb einige Schritte vor deinem Schreibtisch stehen.',
+  mesExample: `<START>\n{{char}}: ${oldDeanExampleAction}`,
+  exampleDialogues: `<START>\n{{char}}: ${oldDeanExampleAction}`,
+  initiativeLevel: 'medium',
+  plotInitiative: 'medium',
 };
 const cleanedDean = migrateKnownDefaultCharacterArtifacts(oldDean);
 assert.doesNotMatch(cleanedDean.description || '', /Bibliothekarin/);
@@ -80,10 +92,20 @@ assert.doesNotMatch(cleanedDean.relationshipToPlayer || '', /Bibliothekarin/);
 assert.doesNotMatch(cleanedDean.appearance || '', /Bibliothekarin/);
 assert.match(cleanedDean.firstMes || '', /vor deinem Tisch stehen/);
 assert.match(cleanedDean.startPrompt || '', /vor deinem Tisch stehen/);
+assert.match(cleanedDean.personality || '', /treibt Szenen durch eigene plausible Entscheidungen/);
+assert.match(cleanedDean.description || '', /selbstständig situative Initiative/);
+assert.match(cleanedDean.description || '', /Plot initiative: high/);
+assert.match(cleanedDean.postHistoryInstructions || '', /Dean bleibt eigeninitiativ/);
+assert.match(cleanedDean.postHistoryInstructions || '', /keine bereits bestehenden biografischen Canon-Fakten/);
+assert.match(cleanedDean.mesExample || '', /ziehe den freien Stuhl/);
+assert.equal(cleanedDean.initiativeLevel, 'high');
+assert.equal(cleanedDean.plotInitiative, 'high');
 
 const unrelatedCharacter = { ...oldDean, id: 'some-other-dean' };
 const untouched = migrateKnownDefaultCharacterArtifacts(unrelatedCharacter);
 assert.match(untouched.description || '', /Bibliothekarin/);
 assert.match(untouched.firstMes || '', /Schreibtisch/);
+assert.equal(untouched.personality, oldDeanPersonality);
+assert.equal(untouched.initiativeLevel, 'medium');
 
 console.log('Legacy character to Character Card V2 migration assertions passed.');
