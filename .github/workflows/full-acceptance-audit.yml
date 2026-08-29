@@ -6,6 +6,7 @@ on:
     paths:
       - 'tests/uiMockAcceptance.mjs'
       - 'tests/patch_acceptance.py'
+      - 'tests/diagnose_backup_restore.py'
       - '.github/workflows/full-acceptance-audit.yml'
 
 jobs:
@@ -27,6 +28,7 @@ jobs:
         shell: bash
         run: |
           python3 tests/patch_acceptance.py
+          python3 tests/diagnose_backup_restore.py
           sed -i 's/Foto jetzt senden lassen/Szenenmoment senden lassen/g' tests/uiMockAcceptance.mjs
           sed -i 's/Situational photo request job/Situational scene-moment job/g' tests/uiMockAcceptance.mjs
           sed -i 's/photo job lifecycle\/unlock/scene-moment job lifecycle\/unlock/g' tests/uiMockAcceptance.mjs
