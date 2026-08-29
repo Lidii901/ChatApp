@@ -461,13 +461,13 @@ export const CharacterEditorModal: React.FC<CharacterEditorModalProps> = ({ isOp
               </div>
 
               <details className="rounded-2xl border border-zinc-800 bg-zinc-950/55 p-4">
-                <summary className="cursor-pointer text-xs font-black text-zinc-300">Situative Bilder (App-Funktion)</summary>
-                <p className="mt-2 text-[11px] leading-relaxed text-zinc-600">Diese Felder gehören nicht zur Character Card V2 und steuern nur die Bildfunktion der App.</p>
+                <summary className="cursor-pointer text-xs font-black text-zinc-300">Situative Szenenmomente (App-Funktion)</summary>
+                <p className="mt-2 text-[11px] leading-relaxed text-zinc-600">Diese Felder gehören nicht zur Character Card V2 und steuern nur die textliche Szenenmoment-Funktion der App. Es wird kein Bild generiert.</p>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
                   <select value={formData.imageFrequency || 'occasional'} onChange={e => setFormData({ ...formData, imageFrequency: e.target.value as ImageFrequency })} className="field">
                     <option value="disabled">Deaktiviert</option><option value="rare">Selten</option><option value="occasional">Gelegentlich</option><option value="frequent">Häufig</option><option value="very_frequent">Sehr häufig</option>
                   </select>
-                  <input value={formData.imageStyleDescription || ''} onChange={e => setFormData({ ...formData, imageStyleDescription: e.target.value })} className="field" placeholder="Bildstil / Look" />
+                  <input value={formData.imageStyleDescription || ''} onChange={e => setFormData({ ...formData, imageStyleDescription: e.target.value })} className="field" placeholder="Stil / Fokus des Szenenmoments" />
                 </div>
               </details>
             </section>

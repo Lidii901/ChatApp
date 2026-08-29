@@ -681,7 +681,7 @@ app.post('/api/jobs/photo', async (req: Request, res: Response) => {
     const charName = character?.name || (isDean ? 'Dean' : 'Charakter');
     const playerAddress = character?.playerAddressName || 'User';
     const isGerman = language === 'de';
-    if (character?.imageFrequency === 'disabled') return res.status(400).json({ error: `Situative Bilder sind für ${charName} deaktiviert.` });
+    if (character?.imageFrequency === 'disabled') return res.status(400).json({ error: `Situative Szenenmomente sind für ${charName} deaktiviert.` });
 
     const job = createJob('photo', characterId, chatId);
     res.json({ jobId: job.id, status: 'running' });
@@ -689,8 +689,8 @@ app.post('/api/jobs/photo', async (req: Request, res: Response) => {
       try {
         const imageStyle = character?.imageStyleDescription || 'Passend zum Charakter';
         const systemPrompt = isGerman
-          ? `Du bist die Figur ${charName}. Du schickst ${playerAddress} ein situatives Bild oder Detail deiner aktuellen Umgebung bzw. deines Looks. Schreibe eine kurze Begleitnachricht (1-3 Sätze) passend zur Character Card.`
-          : `You are ${charName}. You are sending ${playerAddress} a situational snapshot or detail of the current surroundings/appearance. Write a short accompanying message (1-3 sentences) consistent with the Character Card.`;
+          ? `Du bist die Figur ${charName}. Schreibe für ${playerAddress} einen kurzen situativen Szenenmoment oder ein Detail deiner aktuellen Umgebung bzw. deines Looks. Die Ausgabe ist ausschliesslich textlich: Behaupte nicht, dass du ein echtes Bild oder Foto gesendet hast. Schreibe 1-3 Sätze passend zur Character Card.`
+          : `You are ${charName}. Write ${playerAddress} a short situational scene moment or detail of the current surroundings/appearance. The output is text only: do not claim that you sent a real image or photo. Write 1-3 sentences consistent with the Character Card.`;
         const userPrompt = isGerman
           ? `Szene: ${currentScene || 'Ort der Handlung'}.\nAussehen: ${character?.description || character?.appearance || 'gemäss Character Card'}.\nStil / Fokus: ${imageStyle}.`
           : `Scene: ${currentScene || 'Current scene'}.\nAppearance: ${character?.description || character?.appearance || 'according to the Character Card'}.\nStyle / focus: ${imageStyle}.`;
@@ -701,12 +701,12 @@ app.post('/api/jobs/photo', async (req: Request, res: Response) => {
       } catch (error: any) {
         console.error('Job error (photo):', error);
         job.status = 'failed';
-        job.error = error.message || 'Fehler beim Generieren der situativen Nachricht.';
+        job.error = error.message || 'Fehler beim Generieren des Szenenmoments.';
         job.completedAt = Date.now();
       }
     })();
   } catch (error: any) {
-    res.status(500).json({ error: error.message || 'Fehler beim Starten des Photo-Jobs.' });
+    res.status(500).json({ error: error.message || 'Fehler beim Starten des Szenenmoment-Jobs.' });
   }
 });
 

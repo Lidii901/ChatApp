@@ -365,15 +365,30 @@ export default function App() {
   const handleDeleteChat = (chatId: string) => {
     const filtered = chats.filter((c) => c.id !== chatId);
     setChats(filtered);
+
+    // A deleted chat must not leave stale background-job state attached to the UI.
+    loadPendingJobs()
+      .filter((job) => job.chatId === chatId)
+      .forEach((job) => removePendingJob(job.id));
+
     if (activeChatId === chatId) {
-      if (filtered.length > 0) {
-        setActiveChatId(filtered[0].id);
-        setActiveCharacterId(filtered[0].characterId);
+      const fallbackChat = filtered[0];
+      if (fallbackChat) {
+        setActiveChatId(fallbackChat.id);
+        setActiveCharacterId(fallbackChat.characterId);
       } else {
         setActiveChatId('');
-        setCurrentView('main');
-        setActiveTab('chats');
       }
+
+      setActiveChatJobId(null);
+      setActiveImitateJobId(null);
+      setActivePhotoJobId(null);
+      setIsGenerating(false);
+      setIsImitating(false);
+      setIsPhotoJobRunning(false);
+      setIsMenuDrawerOpen(false);
+      setCurrentView('main');
+      setActiveTab('chats');
     }
   };
 
@@ -594,7 +609,7 @@ export default function App() {
               status: 'success',
               model: job.result.modelUsed || 'openrouter',
               latencyMs: job.result.latencyMs,
-              message: `${charObj.name} hat ein Foto gesendet`,
+              message: `${charObj.name} hat einen Szenenmoment gesendet`,
             });
             setTimeout(() => scrollToBottom(), 100);
           }
@@ -604,7 +619,7 @@ export default function App() {
           setActivePhotoJobId(null);
           setIsPhotoJobRunning(false);
           setIsGenerating(false);
-          setErrorMessage(job.error || 'Foto-Generierung fehlgeschlagen.');
+          setErrorMessage(job.error || 'Szenenmoment-Generierung fehlgeschlagen.');
         }
       } catch (err) {
         console.warn('Photo job poll error', err);
@@ -779,7 +794,7 @@ export default function App() {
         }),
       });
       const data = await response.json();
-      if (!response.ok || data.error) throw new Error(data.error || 'Fehler beim Starten der Foto-Generierung.');
+      if (!response.ok || data.error) throw new Error(data.error || 'Fehler beim Starten des Szenenmoment-Jobs.');
       if (data.jobId) {
         setActivePhotoJobId(data.jobId);
         addPendingJob({
@@ -791,7 +806,7 @@ export default function App() {
         });
       }
     } catch (err: any) {
-      setErrorMessage(err.message || 'Konnte kein Foto anfordern.');
+      setErrorMessage(err.message || 'Konnte keinen Szenenmoment anfordern.');
       setIsPhotoJobRunning(false);
       setIsGenerating(false);
     }
@@ -1078,17 +1093,31 @@ export default function App() {
           setTimeout(() => scrollToBottom(), 100);
         }}
         onRestoreFullBackup={(data) => {
-          if (data.characters && data.characters.length > 0) {
-            const normalized = data.characters.map(normalizeLegacyCharacterToV2);
-            setCharacters(normalized);
-            setActiveCharacterId(normalized[0].id);
-          }
-          if (data.chats && data.chats.length > 0) {
-            setChats(data.chats);
-            setActiveChatId(data.chats[0].id);
-          }
+          const normalizedCharacters = data.characters && data.characters.length > 0
+            ? data.characters.map(normalizeLegacyCharacterToV2)
+            : undefined;
+          const restoredChats = data.chats && data.chats.length > 0 ? data.chats : undefined;
+
+          if (normalizedCharacters) setCharacters(normalizedCharacters);
+          if (restoredChats) setChats(restoredChats);
           if (data.settings) setSettings(data.settings);
-          setTimeout(() => scrollToBottom(), 100);
+
+          const restoredChat = restoredChats?.[0];
+          const restoredCharacterId = restoredChat?.characterId || normalizedCharacters?.[0]?.id;
+          if (restoredChat) setActiveChatId(restoredChat.id);
+          else if (restoredChats) setActiveChatId('');
+          if (restoredCharacterId) setActiveCharacterId(restoredCharacterId);
+
+          setActiveChatJobId(null);
+          setActiveImitateJobId(null);
+          setActivePhotoJobId(null);
+          setIsGenerating(false);
+          setIsImitating(false);
+          setIsPhotoJobRunning(false);
+          setErrorMessage(null);
+          setIsImportExportModalOpen(false);
+          setCurrentView('main');
+          setActiveTab('chats');
         }}
         onImportCharacterCard={(importedChar) => {
           const normalizedImported = normalizeLegacyCharacterToV2(importedChar);
