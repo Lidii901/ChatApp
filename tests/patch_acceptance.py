@@ -131,4 +131,5 @@ s = s.replace(
     "const label = Array.from(document.querySelectorAll('label')).find(el => (el.querySelector('span')?.textContent || '').trim() === 'Description');"
 )
 
+# Trigger a fresh preview audit after the real base-character reset fix.
 p.write_text(s)
