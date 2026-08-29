@@ -11,6 +11,14 @@ def replace_once(path: str, old: str, new: str) -> None:
     file.write_text(text.replace(old, new, 1))
 
 
+# Preserve the Imitate Me knowledge boundary: the technical card name is not
+# automatically in-world knowledge for the player's character.
+replace_once(
+    "server.ts",
+    "Do not write actions, dialogue, thoughts or decisions for {{char}}. Do not invent prior meetings, relationship history, names, memories, knowledge or familiarity that are not established in the available context.",
+    "Do not write actions, dialogue, thoughts or decisions for the other character. Do not invent prior meetings, relationship history, names, memories, knowledge or familiarity that are not established in the available context.",
+)
+
 replace_once(
     "src/App.tsx",
     "import { CharacterListView } from './components/CharacterListView';\n",
