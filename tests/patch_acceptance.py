@@ -116,4 +116,19 @@ if old not in s:
     raise SystemExit('override test block not found')
 s = s.replace(old, new)
 
+# Playwright's hasText() can match a label because of its textarea value. Use the
+# accessible label name and the visible label span exactly for this test.
+s = s.replace(
+    "const desc = page.locator('label').filter({ hasText: 'Description' }).locator('textarea');",
+    "const desc = page.getByRole('textbox', { name: 'Description', exact: true });"
+)
+s = s.replace(
+    "page.locator('label').filter({ hasText: 'Description' }).locator('textarea').inputValue()",
+    "page.getByRole('textbox', { name: 'Description', exact: true }).inputValue()"
+)
+s = s.replace(
+    "const label = Array.from(document.querySelectorAll('label')).find(el => (el.textContent || '').includes('Description'));",
+    "const label = Array.from(document.querySelectorAll('label')).find(el => (el.querySelector('span')?.textContent || '').trim() === 'Description');"
+)
+
 p.write_text(s)
