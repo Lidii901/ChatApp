@@ -32,6 +32,25 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Run full acceptance audit
+        id: audit
         env:
           PREVIEW_URL: https://chatapp-preview.onrender.com
-        run: node tests/fullAcceptanceAudit.mjs
+        shell: bash
+        run: |
+          set +e
+          node tests/fullAcceptanceAudit.mjs 2>&1 | tee acceptance-audit.log
+          status=${PIPESTATUS[0]}
+          echo "exit_code=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Upload audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: acceptance-audit-report
+          path: acceptance-audit.log
+          if-no-files-found: error
+
+      - name: Fail if audit found errors
+        if: always()
+        run: test "${{ steps.audit.outputs.exit_code }}" = "0"
