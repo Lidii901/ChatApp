@@ -50,6 +50,11 @@ jobs:
           if old_text_import not in s:
               raise SystemExit('text import setup block not found')
           s = s.replace(old_text_import, new_text_import, 1)
+          old_text_modal = "  await page.getByRole('button', { name: /Backup & Import/ }).click();\n  const modal = page.locator('#import-export-modal');\n  await modal.locator('textarea').first().fill('Dean: AUDIT IMPORT CHARACTER"
+          new_text_modal = "  await page.getByRole('button', { name: /Backup & Import/ }).click();\n  const modal = page.locator('#import-export-modal');\n  await modal.getByRole('button', { name: 'Text-Import', exact: true }).click();\n  await modal.locator('textarea').first().fill('Dean: AUDIT IMPORT CHARACTER"
+          if old_text_modal not in s:
+              raise SystemExit('text import modal block not found')
+          s = s.replace(old_text_modal, new_text_modal, 1)
           p.write_text(s)
           PY
 
