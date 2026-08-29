@@ -52,7 +52,7 @@ export function removePendingJob(jobId: string): void {
   savePendingJobs(current);
 }
 
-export const DEFAULT_IMPERSONATION_PROMPT = `Write {{user}}'s next response based only on the established conversation, scenario, user profile/persona and chat memory. Match {{user}}'s established writing style and perspective. Do not write actions, dialogue, thoughts or decisions for {{char}}. Do not invent prior meetings, relationship history, names, memories, knowledge or familiarity that are not established in the available context.`;
+export const DEFAULT_IMPERSONATION_PROMPT = `Write {{user}}'s next response based only on the established conversation, scenario, user profile/persona and chat memory. Match {{user}}'s established writing style and perspective. Do not write actions, dialogue, thoughts or decisions for the other character. Do not invent prior meetings, relationship history, names, memories, knowledge or familiarity that are not established in the available context.`;
 
 export const DEFAULT_SETTINGS: ModelSettings = {
   provider: 'openrouter',

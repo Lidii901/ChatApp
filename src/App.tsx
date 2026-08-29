@@ -739,6 +739,7 @@ export default function App() {
           currentSummary: activeChat.storyContext.sceneSummary,
           keyEvents: activeChat.storyContext.keyEvents,
           language: activeChat.language || 'de',
+          settings,
         }),
       });
       const data = await response.json();
