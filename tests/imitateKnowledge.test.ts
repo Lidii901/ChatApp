@@ -50,6 +50,9 @@ assert.match(englishSystem, /Default to first-person singular/i);
 assert.match(englishSystem, /private thoughts, internal narration, unseen actions/i);
 assert.match(englishUserPrompt, /private thoughts, internal narration, unseen actions/i);
 assert.match(englishUserPrompt, /certainty about hidden actions/i);
+assert.match(englishSystem, /Preserve already established objective scene state/i);
+assert.match(englishSystem, /open\/closed, position or posture, held\/placed objects/i);
+assert.match(englishUserPrompt, /already established physical scene state/i);
 
 const styledSystem = buildImitateSystemPrompt(
   technicalOnlyCharacter,
@@ -97,6 +100,7 @@ const germanSystem = buildImitateSystemPrompt(
 );
 assert.match(germanSystem, /beweist NICHT/i);
 assert.match(germanSystem, /Erfinde keine frühere Bekanntschaft/i);
+assert.match(germanSystem, /Bewahre bereits etablierte objektive Szenenzustände/i);
 
 const loreSystem = buildImitateSystemPrompt(
   technicalOnlyCharacter,

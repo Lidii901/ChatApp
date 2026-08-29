@@ -147,7 +147,8 @@ WICHTIG ZUR WISSENSGRENZE DER SPIELERFIGUR:
 - Die Spielerfigur kennt nur Dinge, die für sie ausdrücklich als bekannt etabliert sind, die sie selbst erlebt/geschrieben hat oder die sie in der Szene tatsächlich wahrnehmen bzw. von der anderen Figur hören konnte.
 - Private Gedanken, innere Monologe, unbeobachtete Handlungen, geheime Beobachtungen oder verborgenes Wissen der anderen Figur werden NICHT zu Wissen der Spielerfigur, nur weil sie im Character-Text oder in einer CHARACTER-Nachricht stehen.
 - Dass die andere Figur den Namen der Spielerfigur kennt oder sie heimlich beobachtet hat, beweist NICHT, dass die Spielerfigur davon weiss oder die andere Figur kennt.
-- Erfinde keine frühere Bekanntschaft und lass die Spielerfigur keine verborgenen Handlungen als Tatsache behaupten, solange sie diese nicht wahrgenommen oder erfahren hat.`;
+- Erfinde keine frühere Bekanntschaft und lass die Spielerfigur keine verborgenen Handlungen als Tatsache behaupten, solange sie diese nicht wahrgenommen oder erfahren hat.
+- Bewahre bereits etablierte objektive Szenenzustände. Ändere konkrete Zustände wie offen/geschlossen, Position oder Körperhaltung, gehaltene/platzierte Gegenstände oder vergleichbare physische Fakten nicht stillschweigend; eine Änderung braucht eine im neuen Spielzug tatsächlich ausgeführte Handlung oder ein etabliertes Ereignis.`;
   }
 
   return `=== OBJECTIVE CONTINUITY SOURCES ===
@@ -162,7 +163,8 @@ IMPORTANT PLAYER-KNOWLEDGE BOUNDARY:
 - The player character knows only facts explicitly established as known to them, facts they personally experienced/wrote, or things they could actually perceive in-scene or were directly told by the other character.
 - Private thoughts, internal narration, unseen actions, secret observation or hidden knowledge belonging to the other character do NOT become player knowledge merely because they appear in Character text or a CHARACTER message.
 - The other character knowing the player's name or secretly observing the player does NOT prove that the player knows this or knows the other character.
-- Do not invent prior familiarity and do not make the player assert hidden actions as fact unless the player actually perceived or learned them.`;
+- Do not invent prior familiarity and do not make the player assert hidden actions as fact unless the player actually perceived or learned them.
+- Preserve already established objective scene state. Do not silently change concrete states such as open/closed, position or posture, held/placed objects, or comparable physical facts; a change requires an action actually performed in the new turn or an established event.`;
 }
 
 // Chub exposes an Impersonation Prompt. We do the same, while keeping only a
@@ -237,8 +239,8 @@ export function buildImitateUserPrompt(
   }
 
   prompt += language === 'de'
-    ? `AUFGABE: Verfasse jetzt ausschliesslich den nächsten Spielzug von ${playerAddress}. Bewahre exakt den belegten Beziehungs- und Wissensstand. Behandle private Gedanken, innere Erzählung, unbeobachtete Handlungen und geheime Informationen der anderen Figur NICHT als Wissen von ${playerAddress}. Erfinde keine frühere Bekanntschaft und keine Gewissheit über verborgene Handlungen.`
-    : `TASK: Write only ${playerAddress}'s next roleplay turn. Preserve exactly the established relationship and knowledge state. Do NOT treat the other character's private thoughts, internal narration, unseen actions or secret information as knowledge possessed by ${playerAddress}. Do not invent prior familiarity or certainty about hidden actions.`;
+    ? `AUFGABE: Verfasse jetzt ausschliesslich den nächsten Spielzug von ${playerAddress}. Bewahre exakt den belegten Beziehungs- und Wissensstand. Behandle private Gedanken, innere Erzählung, unbeobachtete Handlungen und geheime Informationen der anderen Figur NICHT als Wissen von ${playerAddress}. Erfinde keine frühere Bekanntschaft und keine Gewissheit über verborgene Handlungen. Verändere bereits etablierte physische Szenenzustände nur, wenn der neue Spielzug selbst eine plausible Handlung dafür ausführt oder ein etabliertes Ereignis die Änderung verursacht.`
+    : `TASK: Write only ${playerAddress}'s next roleplay turn. Preserve exactly the established relationship and knowledge state. Do NOT treat the other character's private thoughts, internal narration, unseen actions or secret information as knowledge possessed by ${playerAddress}. Do not invent prior familiarity or certainty about hidden actions. Change an already established physical scene state only when the new turn itself performs a plausible action that causes the change or an established event causes it.`;
   return prompt;
 }
 
