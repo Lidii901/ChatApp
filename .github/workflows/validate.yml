@@ -36,3 +36,6 @@ jobs:
 
       - name: Legacy Character Card migration tests
         run: npx tsx tests/legacyCharacterMigration.test.ts
+
+      - name: Imitate Me knowledge-boundary regression tests
+        run: npx tsx tests/imitateKnowledge.test.ts
