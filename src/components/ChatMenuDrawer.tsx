@@ -18,6 +18,7 @@ interface ChatMenuDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   character: Character;
+  baseCharacter: Character;
   activeChat: ChatSession;
   onOpenContextModal: () => void;
   onOpenCharacterEditor: () => void;
@@ -34,6 +35,7 @@ export const ChatMenuDrawer: React.FC<ChatMenuDrawerProps> = ({
   isOpen,
   onClose,
   character,
+  baseCharacter,
   activeChat,
   onOpenContextModal,
   onOpenCharacterEditor,
@@ -194,7 +196,7 @@ export const ChatMenuDrawer: React.FC<ChatMenuDrawerProps> = ({
                   <Sliders className="h-4 w-4 text-rose-400" />
                   <div className="text-left">
                     <p className="font-medium text-zinc-200">Chat konfigurieren</p>
-                    <p className="text-[10px] text-zinc-500">Titel, Dominanz & Rollen für diesen Chat</p>
+                    <p className="text-[10px] text-zinc-500">Character Overrides, Sprache & Memory für diesen Chat</p>
                   </div>
                 </div>
               </button>
@@ -275,7 +277,7 @@ export const ChatMenuDrawer: React.FC<ChatMenuDrawerProps> = ({
           isOpen={isChatSettingsOpen}
           onClose={() => setIsChatSettingsOpen(false)}
           chat={activeChat}
-          baseCharacter={character}
+          baseCharacter={baseCharacter}
           onSaveChat={(updated) => {
             onUpdateChat(updated);
             setIsChatSettingsOpen(false);

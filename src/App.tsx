@@ -1008,10 +1008,11 @@ export default function App() {
         isOpen={isMenuDrawerOpen}
         onClose={() => setIsMenuDrawerOpen(false)}
         character={activeCharacter}
+        baseCharacter={baseCharacter}
         activeChat={activeChat}
         onOpenContextModal={() => setIsContextModalOpen(true)}
         onOpenCharacterEditor={() => {
-          setEditingCharacter(activeCharacter);
+          setEditingCharacter(baseCharacter);
           setIsEditorModalOpen(true);
         }}
         onOpenProfileModal={() => setIsProfileModalOpen(true)}
@@ -1028,7 +1029,7 @@ export default function App() {
         onClose={() => setIsProfileModalOpen(false)}
         character={activeCharacter}
         onOpenEdit={() => {
-          setEditingCharacter(activeCharacter);
+          setEditingCharacter(baseCharacter);
           setIsEditorModalOpen(true);
         }}
       />
