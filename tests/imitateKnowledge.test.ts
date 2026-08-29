@@ -92,6 +92,6 @@ const loreSystem = buildImitateSystemPrompt(
   '{{char}} owns a hidden archive.',
 );
 assert.match(loreSystem, /SECRET_TECHNICAL_NAME owns a hidden archive\./);
-assert.match(loreSystem, /not automatically.*unobserved information/i);
+assert.match(loreSystem, /unobserved information.*not automatically/i);
 
 console.log('Imitate Me knowledge-boundary regression assertions passed.');
