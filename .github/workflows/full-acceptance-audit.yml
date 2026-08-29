@@ -40,6 +40,11 @@ jobs:
           new = "  await page.getByRole('button', { name: 'Standardinhalte wiederherstellen' }).click();\n  await page.getByRole('main').getByRole('button', { name: 'Abbrechen', exact: true }).click();"
           if old in s:
               s = s.replace(old, new, 1)
+          old_download = "  backupPath = await download.path();\n  assert.ok(backupPath && fs.statSync(backupPath).size > 100);"
+          new_download = "  backupPath = `/tmp/${download.suggestedFilename()}`;\n  await download.saveAs(backupPath);\n  assert.ok(backupPath && fs.statSync(backupPath).size > 100);"
+          if old_download not in s:
+              raise SystemExit('backup download path block not found')
+          s = s.replace(old_download, new_download, 1)
           p.write_text(s)
           PY
 
