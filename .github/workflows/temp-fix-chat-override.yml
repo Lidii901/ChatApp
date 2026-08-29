@@ -23,7 +23,6 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
-
           p = Path('src/components/ImportExportModal.tsx')
           s = p.read_text()
           start_marker = '          if (state.characters && state.chats) {'
@@ -31,20 +30,22 @@ jobs:
           start = s.find(start_marker)
           end = s.find(end_marker, start)
           if start < 0 or end < 0:
-            raise SystemExit('full-backup restore branch not found')
-          replacement = '''          if (state.characters && state.chats) {
-            // A full restore replaces the app state. Close this modal before handing
-            // the restored state to the parent so stale modal UI cannot survive the
-            // character/chat replacement or block the restored navigation.
-            onClose();
-            setStatusMessage(null);
-            onRestoreFullBackup({
-              characters: state.characters,
-              chats: state.chats,
-              settings: state.settings,
-            });
-            return;
-'''
+              raise SystemExit('full-backup restore branch not found')
+          replacement = '\n'.join([
+              '          if (state.characters && state.chats) {',
+              '            // A full restore replaces the app state. Close this modal before handing',
+              '            // the restored state to the parent so stale modal UI cannot survive the',
+              '            // character/chat replacement or block the restored navigation.',
+              '            onClose();',
+              '            setStatusMessage(null);',
+              '            onRestoreFullBackup({',
+              '              characters: state.characters,',
+              '              chats: state.chats,',
+              '              settings: state.settings,',
+              '            });',
+              '            return;',
+              '',
+          ])
           p.write_text(s[:start] + replacement + s[end:])
           PY
 
