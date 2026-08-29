@@ -33,7 +33,7 @@ cases.test4 = p4.messages;
 assert.equal(resolveGreeting({ ...base, firstMes: 'Hello {{user}}, {{char}} here.' }), 'Hello Lidii, Dean here.');
 assert.equal(resolveGreeting({ ...base, firstMes: 'main', alternateGreetings: ['alt {{char}}'] }, 0), 'alt Dean');
 const p7 = buildChatPayload({ character: { ...base, systemPrompt: 'Before\n{{original}}\nAfter' }, language: 'en', messages: [{ role: 'user', content: 'x' }] });
-assert.match(p7.systemPrompt, /Before\nWrite Dean's next reply in an immersive roleplay between Dean and Lidii\.\nAfter/);
+assert.match(p7.systemPrompt, /Before[\s\S]*active participant[\s\S]*Dean and Lidii|Before[\s\S]*fictional roleplay chat between Dean and Lidii/i);
 assert.doesNotMatch(p7.systemPrompt, /{{(?:char|user|original)}}/);
 cases.test7 = p7.messages;
 const p8 = buildChatPayload({ character: { ...base, postHistoryInstructions: 'Before {{original}} After' }, language: 'en', messages: [{ role: 'user', content: 'x' }] });

@@ -53,7 +53,8 @@ export function removePendingJob(jobId: string): void {
   savePendingJobs(current);
 }
 
-export const DEFAULT_IMPERSONATION_PROMPT = `Write {{user}}'s next response based only on the established conversation, scenario, user profile/persona and chat memory. Match {{user}}'s established writing style and perspective. Do not write actions, dialogue, thoughts or decisions for the other character. Do not invent prior meetings, relationship history, names, memories, knowledge or familiarity that are not established in the available context.`;
+export const LEGACY_IMPERSONATION_PROMPT = `Write {{user}}'s next response based only on the established conversation, scenario, user profile/persona and chat memory. Match {{user}}'s established writing style and perspective. Do not write actions, dialogue, thoughts or decisions for the other character. Do not invent prior meetings, relationship history, names, memories, knowledge or familiarity that are not established in the available context.`;
+export const DEFAULT_IMPERSONATION_PROMPT = `Write your next reply from the point of view of {{user}}, using the chat history so far as a guideline for the writing style of {{user}}. Write 1 reply only in internet RP style, italicize actions, and avoid quotation marks. Use markdown. Don't write as {{char}} or system. Don't describe actions of {{char}}.`;
 
 export const DEFAULT_SETTINGS: ModelSettings = {
   provider: 'openrouter',
@@ -102,22 +103,23 @@ export function loadSavedCharacters(): Character[] {
           let cleaned = migrateKnownDefaultCharacterArtifacts(char);
           if (cleaned.id === 'char-dean') {
             const canonicalDean = DEFAULT_CHARACTERS.find((c) => c.id === 'char-dean');
-            if (
-              canonicalDean &&
-              (!cleaned.startPrompt ||
-                cleaned.startPrompt.includes('regungslos') ||
-                cleaned.startPrompt.includes('Vorsprung') ||
-                cleaned.startPrompt.includes('Garten') ||
-                cleaned.startPrompt.includes('Collector'))
-            ) {
+            const bundledGreeting = `${cleaned.firstMes || ''}
+${cleaned.startPrompt || ''}`;
+            const isKnownBundledDean =
+              !cleaned.startPrompt ||
+              bundledGreeting.includes('Die schwere Holztür der Bibliothek') ||
+              bundledGreeting.includes('The heavy wooden door of the library') ||
+              bundledGreeting.includes('regungslos') ||
+              bundledGreeting.includes('Vorsprung') ||
+              bundledGreeting.includes('Garten') ||
+              (cleaned.description || '').includes('Wuchs in den rauen Strassenzügen von New York / Bronx auf.');
+            if (canonicalDean && isKnownBundledDean) {
               cleaned = {
                 ...cleaned,
-                startPrompt: canonicalDean.startPrompt,
-                startPlot: canonicalDean.startPlot,
-                startBehavior: canonicalDean.startBehavior,
-                behaviorRules: canonicalDean.behaviorRules,
-                exampleDialogues: canonicalDean.exampleDialogues,
-                postHistoryInstructions: canonicalDean.postHistoryInstructions,
+                ...canonicalDean,
+                avatarUrl: cleaned.avatarUrl || canonicalDean.avatarUrl,
+                createdAt: cleaned.createdAt || canonicalDean.createdAt,
+                updatedAt: Date.now(),
               };
             }
           }
@@ -232,6 +234,10 @@ export function loadSavedSettings(): ModelSettings {
           typeof parsed.contextSizeTokens === 'number' && parsed.contextSizeTokens >= 2048
             ? parsed.contextSizeTokens
             : DEFAULT_SETTINGS.contextSizeTokens,
+        impersonationPrompt:
+          !parsed.impersonationPrompt || parsed.impersonationPrompt === LEGACY_IMPERSONATION_PROMPT
+            ? DEFAULT_IMPERSONATION_PROMPT
+            : parsed.impersonationPrompt,
       };
       // contextWindowSize was the old message-count cutoff. Keep it only as inert
       // compatibility data; never reinterpret 14 messages as 14 tokens.
@@ -302,6 +308,10 @@ export function importFullRPState(jsonString: string): {
       typeof parsed.settings?.contextSizeTokens === 'number' && parsed.settings.contextSizeTokens >= 2048
         ? parsed.settings.contextSizeTokens
         : DEFAULT_SETTINGS.contextSizeTokens,
+    impersonationPrompt:
+      !parsed.settings?.impersonationPrompt || parsed.settings.impersonationPrompt === LEGACY_IMPERSONATION_PROMPT
+        ? DEFAULT_IMPERSONATION_PROMPT
+        : parsed.settings.impersonationPrompt,
   };
 
   if (Array.isArray(parsed.characters) && Array.isArray(parsed.chats)) {

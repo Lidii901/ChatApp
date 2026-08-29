@@ -20,7 +20,7 @@ export const IMITATE_FALLBACK_MODEL = 'nvidia/nemotron-3-ultra-550b-a55b:free';
 export const SUMMARIZE_DEFAULT_MODEL = 'nvidia/nemotron-3-super-120b-a12b:free';
 export const FALLBACK_FREE_MODEL = 'google/gemma-4-26b-a4b-it:free';
 
-export const DEFAULT_IMPERSONATION_PROMPT = `Write {{user}}'s next response based only on the established conversation, scenario, user profile/persona and chat memory. Match {{user}}'s established writing style and perspective. Do not write actions, dialogue, thoughts or decisions for the other character. Do not invent prior meetings, relationship history, names, memories, knowledge or familiarity that are not established in the available context.`;
+export const DEFAULT_IMPERSONATION_PROMPT = `Write your next reply from the point of view of {{user}}, using the chat history so far as a guideline for the writing style of {{user}}. Write 1 reply only in internet RP style, italicize actions, and avoid quotation marks. Use markdown. Don't write as {{char}} or system. Don't describe actions of {{char}}.`;
 
 interface ServerJob {
   id: string;
@@ -148,6 +148,7 @@ WICHTIG ZUR WISSENSGRENZE DER SPIELERFIGUR:
 - Private Gedanken, innere Monologe, unbeobachtete Handlungen, geheime Beobachtungen oder verborgenes Wissen der anderen Figur werden NICHT zu Wissen der Spielerfigur, nur weil sie im Character-Text oder in einer CHARACTER-Nachricht stehen.
 - Dass die andere Figur den Namen der Spielerfigur kennt oder sie heimlich beobachtet hat, beweist NICHT, dass die Spielerfigur davon weiss oder die andere Figur kennt.
 - Erfinde keine frühere Bekanntschaft und lass die Spielerfigur keine verborgenen Handlungen als Tatsache behaupten, solange sie diese nicht wahrgenommen oder erfahren hat.
+- Eine unbestätigte Ahnung, Nervosität, Unbehagen, Neugier oder Anziehung ist erlaubt, wenn sie als subjektives Gefühl der Spielerfigur formuliert wird. Sie darf daraus aber kein geheimes Stalking, keine verborgene Handlung und kein unbekanntes Motiv als Tatsache ableiten.
 - Bewahre bereits etablierte objektive Szenenzustände. Ändere konkrete Zustände wie offen/geschlossen, Position oder Körperhaltung, gehaltene/platzierte Gegenstände oder vergleichbare physische Fakten nicht stillschweigend; eine Änderung braucht eine im neuen Spielzug tatsächlich ausgeführte Handlung oder ein etabliertes Ereignis.`;
   }
 
@@ -164,6 +165,7 @@ IMPORTANT PLAYER-KNOWLEDGE BOUNDARY:
 - Private thoughts, internal narration, unseen actions, secret observation or hidden knowledge belonging to the other character do NOT become player knowledge merely because they appear in Character text or a CHARACTER message.
 - The other character knowing the player's name or secretly observing the player does NOT prove that the player knows this or knows the other character.
 - Do not invent prior familiarity and do not make the player assert hidden actions as fact unless the player actually perceived or learned them.
+- Unconfirmed unease, nervousness, curiosity, suspicion or attraction is allowed as a subjective player feeling when it fits the observable scene, but it must not turn hidden stalking, unseen actions or unknown motives into factual player knowledge.
 - Preserve already established objective scene state. Do not silently change concrete states such as open/closed, position or posture, held/placed objects, or comparable physical facts; a change requires an action actually performed in the new turn or an established event.`;
 }
 
@@ -180,7 +182,11 @@ export function buildImitateSystemPrompt(
 ): string {
   const playerAddress = character?.playerAddressName || 'User';
   const values = imitateMacroValues(character, storyContext, activatedLore);
-  const configuredPrompt = applyPromptMacros(impersonationPrompt || DEFAULT_IMPERSONATION_PROMPT, values).trim();
+  const impersonationMacroValues = {
+    ...values,
+    char: language === 'de' ? 'die andere Figur' : 'the other character',
+  };
+  const configuredPrompt = applyPromptMacros(impersonationPrompt || DEFAULT_IMPERSONATION_PROMPT, impersonationMacroValues).trim();
   const evidenceSections = buildImitateEvidenceSections(character, storyContext, activatedLore, language);
   const examples = (userPastMessages || []).slice(-5).map((message, index) =>
     `[${language === 'de' ? 'Stilbeispiel' : 'Style example'} ${index + 1}]:\n${message.trim()}`
@@ -239,8 +245,8 @@ export function buildImitateUserPrompt(
   }
 
   prompt += language === 'de'
-    ? `AUFGABE: Verfasse jetzt ausschliesslich den nächsten Spielzug von ${playerAddress}. Bewahre exakt den belegten Beziehungs- und Wissensstand. Behandle private Gedanken, innere Erzählung, unbeobachtete Handlungen und geheime Informationen der anderen Figur NICHT als Wissen von ${playerAddress}. Erfinde keine frühere Bekanntschaft und keine Gewissheit über verborgene Handlungen. Verändere bereits etablierte physische Szenenzustände nur, wenn der neue Spielzug selbst eine plausible Handlung dafür ausführt oder ein etabliertes Ereignis die Änderung verursacht.`
-    : `TASK: Write only ${playerAddress}'s next roleplay turn. Preserve exactly the established relationship and knowledge state. Do NOT treat the other character's private thoughts, internal narration, unseen actions or secret information as knowledge possessed by ${playerAddress}. Do not invent prior familiarity or certainty about hidden actions. Change an already established physical scene state only when the new turn itself performs a plausible action that causes the change or an established event causes it.`;
+    ? `AUFGABE: Verfasse jetzt ausschliesslich den nächsten Spielzug von ${playerAddress}. Bewahre exakt den belegten Beziehungs- und Wissensstand. Behandle private Gedanken, innere Erzählung, unbeobachtete Handlungen und geheime Informationen der anderen Figur NICHT als Wissen von ${playerAddress}. Erfinde keine frühere Bekanntschaft und keine Gewissheit über verborgene Handlungen. Subjektive Ahnung, Unbehagen, Neugier oder Anziehung darfst du schreiben, solange sie nicht als Wissen über geheimes Stalking oder unbekannte Motive dargestellt wird. Verändere bereits etablierte physische Szenenzustände nur, wenn der neue Spielzug selbst eine plausible Handlung dafür ausführt oder ein etabliertes Ereignis die Änderung verursacht.`
+    : `TASK: Write only ${playerAddress}'s next roleplay turn. Preserve exactly the established relationship and knowledge state. Do NOT treat the other character's private thoughts, internal narration, unseen actions or secret information as knowledge possessed by ${playerAddress}. Do not invent prior familiarity or certainty about hidden actions. You may write subjective unease, curiosity, suspicion or attraction when it fits the observable scene, but never present hidden stalking or unknown motives as facts known by the player. Change an already established physical scene state only when the new turn itself performs a plausible action that causes the change or an established event causes it.`;
   return prompt;
 }
 
