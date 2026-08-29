@@ -2,7 +2,14 @@
 // References:
 // - https://github.com/malfoyslastname/character-card-spec-v2/blob/main/spec_v2.md
 // - https://docs.chub.ai/docs/advanced-setups/prompting
+// - https://docs.chub.ai/docs/advanced-setups/lorebooks
 // - https://docs.chub.ai/docs/the-basics/character-creation
+
+export type LoreSelectiveLogic =
+  | 0 | 1 | 2 | 3
+  | 'AND' | 'OR' | 'NOT'
+  | 'AND_ANY' | 'AND_ALL' | 'NOT_ANY' | 'NOT_ALL'
+  | 'and_any' | 'and_all' | 'not_any' | 'not_all';
 
 export interface CharacterBookEntry {
   id?: number;
@@ -19,6 +26,14 @@ export interface CharacterBookEntry {
   selective?: boolean;
   constant?: boolean;
   position?: 'before_char' | 'after_char';
+
+  // Common Chub/exported lorebook activation metadata. These are not required
+  // by the core CCv2 schema, so unknown extension values are still preserved.
+  selectiveLogic?: LoreSelectiveLogic;
+  selective_logic?: LoreSelectiveLogic;
+  probability?: number;
+  useProbability?: boolean;
+  use_probability?: boolean;
 }
 
 export interface CharacterBook {

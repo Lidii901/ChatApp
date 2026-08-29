@@ -1,17 +1,14 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Character, ChatSession } from '../types';
 import {
-  MessageSquare,
+  ChevronRight,
+  Globe2,
+  MoreVertical,
   Plus,
   Search,
+  Settings2,
   Trash2,
-  Calendar,
-  Sparkles,
-  ChevronRight,
-  Shield,
-  Layers,
-  MoreVertical,
-  Edit2
+  X,
 } from 'lucide-react';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
 import { ChatSettingsModal } from './ChatSettingsModal';
@@ -21,10 +18,31 @@ interface ChatListViewProps {
   chats: ChatSession[];
   activeChatId: string;
   onSelectChat: (chatId: string) => void;
-  onCreateChat: (characterId: string, customTitle?: string, language?: 'de' | 'en', initialMessage?: string) => void;
+  onCreateChat: (
+    characterId: string,
+    customTitle?: string,
+    language?: 'de' | 'en',
+    selectedGreeting?: string,
+  ) => void | Promise<void>;
   onDeleteChat: (chatId: string) => void;
   onUpdateChat: (updatedChat: ChatSession) => void;
   onNavigateToCharacters: () => void;
+}
+
+const fallbackAvatar = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80';
+
+function cardGreeting(character: Character): string {
+  return character.firstMes !== undefined ? character.firstMes : character.startPrompt || '';
+}
+
+function previewGreeting(text: string, character: Character): string {
+  return (text || '')
+    .replace(/{{char}}/gi, character.name || 'Character')
+    .replace(/{{user}}/gi, character.playerAddressName || 'User');
+}
+
+function cleanMessagePreview(content: string): string {
+  return (content || '').replace(/\*/g, '').replace(/\s+/g, ' ').trim();
 }
 
 export const ChatListView: React.FC<ChatListViewProps> = ({
@@ -39,431 +57,311 @@ export const ChatListView: React.FC<ChatListViewProps> = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [selectedCharId, setSelectedCharId] = useState(characters[0]?.id || 'char-dean');
-  const [newChatTitle, setNewChatTitle] = useState('');
+  const [selectedCharId, setSelectedCharId] = useState(characters[0]?.id || '');
   const [newChatLang, setNewChatLang] = useState<'de' | 'en'>('de');
-  const [selectedGreetingIndex, setSelectedGreetingIndex] = useState<number>(0);
-
-  // Modals for editing and deleting individual chats
+  const [selectedGreetingIndex, setSelectedGreetingIndex] = useState(0);
+  const [isStarting, setIsStarting] = useState(false);
+  const [openMenuChatId, setOpenMenuChatId] = useState<string | null>(null);
   const [chatToDelete, setChatToDelete] = useState<ChatSession | null>(null);
   const [chatToEdit, setChatToEdit] = useState<ChatSession | null>(null);
 
-  const selectedChar = characters.find((c) => c.id === selectedCharId) || characters[0];
-  const availableGreetings: string[] = React.useMemo(() => {
+  const selectedChar = characters.find(c => c.id === selectedCharId) || characters[0];
+
+  const availableGreetings = useMemo(() => {
     if (!selectedChar) return [];
-    const list: string[] = [];
-    const mainGreeting = selectedChar.firstMes !== undefined ? selectedChar.firstMes : selectedChar.startPrompt;
-    if (mainGreeting) list.push(mainGreeting);
-    if (Array.isArray(selectedChar.alternateGreetings)) {
-      selectedChar.alternateGreetings.forEach((ag) => {
-        if (ag && typeof ag === 'string' && ag.trim() && !list.includes(ag)) {
-          list.push(ag);
-        }
-      });
-    }
-    return list;
+    const result: string[] = [];
+    const primary = cardGreeting(selectedChar);
+    if (primary.trim()) result.push(primary);
+    (selectedChar.alternateGreetings || []).forEach(greeting => {
+      if (typeof greeting === 'string' && greeting.trim() && !result.includes(greeting)) {
+        result.push(greeting);
+      }
+    });
+    return result;
   }, [selectedChar]);
 
-  // Filter chats by query or character name
-  const filteredChats = chats.filter((chat) => {
-    const char = characters.find((c) => c.id === chat.characterId);
-    const charName = char?.name || '';
-    const q = searchQuery.toLowerCase();
-    return (
-      chat.title.toLowerCase().includes(q) ||
-      charName.toLowerCase().includes(q) ||
-      chat.storyContext?.currentScene?.toLowerCase().includes(q)
-    );
-  });
+  const filteredChats = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    const list = q
+      ? chats.filter(chat => {
+          const character = characters.find(c => c.id === chat.characterId);
+          const lastMessage = chat.messages[chat.messages.length - 1];
+          return [character?.name, lastMessage?.content]
+            .filter(Boolean)
+            .some(value => String(value).toLowerCase().includes(q));
+        })
+      : chats;
 
-  const handleStartNewChat = () => {
-    const chosenGreeting = availableGreetings[selectedGreetingIndex] || availableGreetings[0];
-    onCreateChat(selectedCharId, newChatTitle.trim() || undefined, newChatLang, chosenGreeting);
-    setIsCreateModalOpen(false);
-    setNewChatTitle('');
+    return [...list].sort((a, b) => (b.updatedAt || b.createdAt) - (a.updatedAt || a.createdAt));
+  }, [chats, characters, searchQuery]);
+
+  const openNewChat = (characterId?: string) => {
+    setSelectedCharId(characterId || characters[0]?.id || '');
     setSelectedGreetingIndex(0);
+    setIsCreateModalOpen(true);
   };
 
-  const getCharacterForChat = (chat: ChatSession) => {
-    return characters.find((c) => c.id === chat.characterId) || characters[0];
-  };
-
-  const formatTimestamp = (ts?: number) => {
-    if (!ts) return '';
-    const date = new Date(ts);
-    const today = new Date();
-    if (date.toDateString() === today.toDateString()) {
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const handleStartNewChat = async () => {
+    if (!selectedChar || isStarting) return;
+    setIsStarting(true);
+    try {
+      const chosenGreeting = availableGreetings[selectedGreetingIndex] ?? availableGreetings[0];
+      await onCreateChat(selectedChar.id, undefined, newChatLang, chosenGreeting);
+      setIsCreateModalOpen(false);
+      setSelectedGreetingIndex(0);
+    } finally {
+      setIsStarting(false);
     }
-    return date.toLocaleDateString([], { day: '2-digit', month: '2-digit' });
   };
 
   return (
-    <div id="chat-list-view" className="flex h-full flex-col bg-zinc-950 text-zinc-100">
-      {/* Top Header */}
-      <div className="flex items-center justify-between border-b border-zinc-800/80 bg-zinc-950/80 px-4 py-3.5 backdrop-blur-md">
-        <div>
-          <h1 className="text-lg font-bold tracking-tight text-zinc-100 flex items-center gap-2">
-            <span className="bg-gradient-to-r from-rose-400 to-rose-600 bg-clip-text text-transparent">Meine Chats</span>
-          </h1>
-          <p className="text-[11px] text-zinc-400">
-            {chats.length} {chats.length === 1 ? 'aktive Unterhaltung' : 'aktive Unterhaltungen'}
-          </p>
-        </div>
-
-        <button
-          id="btn-new-chat-top"
-          onClick={() => setIsCreateModalOpen(true)}
-          className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-rose-600 to-rose-700 px-3.5 py-2 text-xs font-semibold text-white shadow-md transition-all hover:from-rose-500 hover:to-rose-600 active:scale-95 cursor-pointer"
-        >
-          <Plus className="h-4 w-4" />
-          <span>Neuer Chat</span>
-        </button>
-      </div>
-
-      {/* Quick Character Bar */}
-      <div className="border-b border-zinc-900 bg-zinc-900/30 px-4 py-2.5">
-        <div className="flex items-center justify-between pb-1.5">
-          <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">
-            Charaktere für Schnellstart
-          </span>
+    <div className="relative flex h-full flex-col overflow-hidden bg-[#09090b] text-zinc-100">
+      <div className="px-5 pb-3 pt-5">
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-rose-400/80">Deine Storys</p>
+            <h1 className="mt-1 text-3xl font-black tracking-tight text-white">Chats</h1>
+          </div>
           <button
             onClick={onNavigateToCharacters}
-            className="text-[11px] text-rose-400 hover:underline flex items-center gap-0.5 cursor-pointer"
+            className="mb-1 flex items-center gap-1 text-xs font-semibold text-zinc-400 transition-colors hover:text-white"
           >
-            Alle verwalten <ChevronRight className="h-3 w-3" />
+            Charaktere <ChevronRight className="h-4 w-4" />
           </button>
         </div>
+      </div>
 
-        <div className="flex gap-3 overflow-x-auto py-1 scrollbar-none">
-          {characters.map((char) => (
+      <div className="border-b border-zinc-900/80 pb-3">
+        <div className="flex gap-2.5 overflow-x-auto px-5 pb-1 scrollbar-none">
+          {characters.map(character => (
             <button
-              key={char.id}
-              onClick={() => {
-                setSelectedCharId(char.id);
-                setIsCreateModalOpen(true);
-              }}
-              className="flex flex-col items-center gap-1 min-w-[58px] group transition-transform active:scale-95 cursor-pointer"
+              key={character.id}
+              onClick={() => openNewChat(character.id)}
+              className="group relative h-28 w-20 shrink-0 overflow-hidden rounded-[20px] bg-zinc-900 text-left shadow-md active:scale-[0.98]"
             >
-              <div className="relative">
-                <img
-                  src={char.avatarUrl || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80'}
-                  alt={char.name}
-                  referrerPolicy="no-referrer"
-                  className="h-12 w-12 rounded-full object-cover ring-2 ring-zinc-800 group-hover:ring-rose-500 transition-all shadow"
-                />
-                <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-zinc-950" />
+              <img
+                src={character.avatarUrl || fallbackAvatar}
+                alt={character.name}
+                referrerPolicy="no-referrer"
+                className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/10 to-transparent" />
+              <div className="absolute inset-x-0 bottom-0 p-2">
+                <p className="truncate text-xs font-bold text-white">{character.name}</p>
               </div>
-              <span className="text-[11px] font-medium text-zinc-300 group-hover:text-white truncate max-w-[64px]">
-                {char.name}
-              </span>
+              <div className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-sm">
+                <Plus className="h-3.5 w-3.5" />
+              </div>
             </button>
           ))}
         </div>
       </div>
 
-      {/* Search Input */}
-      <div className="p-3 border-b border-zinc-900">
+      <div className="px-5 py-3">
         <div className="relative">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-500" />
+          <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
           <input
-            type="text"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Chats und Szenen durchsuchen..."
-            className="w-full rounded-xl border border-zinc-800 bg-zinc-900/80 py-2 pl-9 pr-3 text-xs text-zinc-100 placeholder-zinc-500 focus:border-rose-500 focus:outline-none"
+            onChange={event => setSearchQuery(event.target.value)}
+            placeholder="Chats durchsuchen"
+            className="h-11 w-full rounded-2xl border border-zinc-800/80 bg-zinc-900/65 pl-11 pr-4 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-rose-500/60"
           />
         </div>
       </div>
 
-      {/* Chat List Content */}
-      <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
+      <div className="flex-1 overflow-y-auto px-3 pb-24">
         {filteredChats.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center text-zinc-500">
-            <MessageSquare className="h-10 w-10 text-zinc-700 mb-2" />
-            <p className="text-sm font-medium text-zinc-400">Keine Chats gefunden</p>
-            <p className="text-xs text-zinc-600 mt-1 max-w-xs">
-              Erstelle eine neue Session mit deinen Charakteren.
-            </p>
-            <button
-              onClick={() => setIsCreateModalOpen(true)}
-              className="mt-4 rounded-xl bg-zinc-800 px-4 py-2 text-xs font-semibold text-zinc-200 hover:bg-zinc-700 cursor-pointer"
-            >
-              Jetzt Chat starten
-            </button>
+          <div className="flex min-h-44 flex-col items-center justify-center px-8 text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-zinc-900 text-rose-400">
+              <Plus className="h-5 w-5" />
+            </div>
+            <h2 className="mt-4 text-base font-bold text-zinc-200">Noch kein Chat</h2>
+            <p className="mt-1 text-sm leading-relaxed text-zinc-500">Tippe oben auf einen Charakter und starte eine Story.</p>
           </div>
         ) : (
-          filteredChats.map((chat) => {
-            const char = getCharacterForChat(chat);
-            const lastMsg = chat.messages[chat.messages.length - 1];
-            const isSelected = chat.id === activeChatId;
+          <div>
+            {filteredChats.map(chat => {
+              const character = characters.find(c => c.id === chat.characterId) || characters[0];
+              const lastMessage = chat.messages[chat.messages.length - 1];
+              const active = chat.id === activeChatId;
+              const menuOpen = openMenuChatId === chat.id;
 
-            return (
-              <div
-                key={chat.id}
-                id={`chat-row-${chat.id}`}
-                onClick={() => onSelectChat(chat.id)}
-                className={`group flex items-center justify-between rounded-2xl p-3 transition-all cursor-pointer border ${
-                  isSelected
-                    ? 'border-rose-500/40 bg-zinc-900/90 shadow-lg'
-                    : 'border-zinc-900/80 bg-zinc-950/40 hover:border-zinc-800 hover:bg-zinc-900/50'
-                }`}
-              >
-                <div className="flex items-center gap-3 min-w-0 flex-1">
-                  {/* Avatar */}
-                  <div className="relative shrink-0">
-                    <img
-                      src={char?.avatarUrl || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80'}
-                      alt={char?.name || 'Charakter'}
-                      referrerPolicy="no-referrer"
-                      className="h-12 w-12 rounded-2xl object-cover ring-1 ring-zinc-700 shadow"
-                    />
-                    <span className="absolute -bottom-1 -right-1 rounded-full bg-zinc-900 px-1 py-0.2 text-[9px] font-bold text-rose-400 border border-zinc-800">
-                      {chat.language.toUpperCase()}
-                    </span>
-                  </div>
-
-                  {/* Info */}
-                  <div className="min-w-0 flex-1 pr-2">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-xs font-semibold text-zinc-100 truncate group-hover:text-rose-400 transition-colors">
-                        {chat.title}
-                      </h3>
-                      <span className="text-[10px] text-zinc-500 shrink-0 ml-2">
-                        {formatTimestamp(chat.updatedAt || chat.createdAt)}
-                      </span>
+              return (
+                <div
+                  key={chat.id}
+                  className={`relative flex items-center gap-2 rounded-2xl px-2 py-2 transition-colors ${active ? 'bg-zinc-900/60' : 'hover:bg-zinc-900/40'}`}
+                >
+                  <button
+                    onClick={() => onSelectChat(chat.id)}
+                    className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                  >
+                    <div className="relative shrink-0">
+                      <img
+                        src={character?.avatarUrl || fallbackAvatar}
+                        alt={character?.name || 'Character'}
+                        referrerPolicy="no-referrer"
+                        className="h-14 w-14 rounded-full object-cover ring-1 ring-zinc-800"
+                      />
+                      {active && (
+                        <span className="absolute -left-1 top-1/2 h-7 w-0.5 -translate-y-1/2 rounded-full bg-rose-500" />
+                      )}
                     </div>
 
-                    <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-zinc-400">
-                      <span className="font-medium text-rose-400/90">{char?.name}:</span>
-                      <p className="truncate text-zinc-400 text-[11px]">
-                        {lastMsg ? lastMsg.content.replace(/\*/g, '') : 'Neuer Chat bereit...'}
+                    <div className="min-w-0 flex-1 border-b border-zinc-900/80 py-3">
+                      <h3 className="truncate text-[15px] font-bold text-zinc-100">
+                        {character?.name || 'Character'}
+                      </h3>
+                      <p className="mt-1 truncate text-xs text-zinc-500">
+                        {lastMessage ? cleanMessagePreview(lastMessage.content) : 'Neue Unterhaltung'}
                       </p>
                     </div>
-
-                    {chat.storyContext?.currentScene && (
-                      <div className="mt-1 flex items-center gap-1 text-[10px] text-zinc-500 truncate">
-                        <span className="inline-block h-1.5 w-1.5 rounded-full bg-rose-500/80" />
-                        <span className="truncate">{chat.storyContext.currentScene}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Actions: Direct in-app modals for Edit and Delete */}
-                <div className="flex items-center gap-1 shrink-0 transition-opacity">
-                  <button
-                    id={`btn-edit-chat-${chat.id}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setChatToEdit(chat);
-                    }}
-                    className="rounded-lg p-2 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 transition-colors cursor-pointer"
-                    title="Chat-Einstellungen bearbeiten"
-                  >
-                    <Edit2 className="h-4 w-4" />
                   </button>
 
                   <button
-                    id={`btn-delete-chat-${chat.id}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setChatToDelete(chat);
-                    }}
-                    className="rounded-lg p-2 text-zinc-400 hover:bg-rose-950/60 hover:text-rose-400 transition-colors cursor-pointer"
-                    title="Chat löschen"
+                    onClick={() => setOpenMenuChatId(menuOpen ? null : chat.id)}
+                    className="rounded-full p-2 text-zinc-600 hover:bg-zinc-900 hover:text-zinc-200"
+                    aria-label="Chat-Menü"
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <MoreVertical className="h-5 w-5" />
                   </button>
+
+                  {menuOpen && (
+                    <div className="absolute right-3 top-12 z-20 w-44 overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 p-1.5 shadow-2xl">
+                      <button
+                        onClick={() => {
+                          setChatToEdit(chat);
+                          setOpenMenuChatId(null);
+                        }}
+                        className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-xs font-medium text-zinc-300 hover:bg-zinc-900"
+                      >
+                        <Settings2 className="h-4 w-4" /> Chat-Einstellungen
+                      </button>
+                      <button
+                        onClick={() => {
+                          setChatToDelete(chat);
+                          setOpenMenuChatId(null);
+                        }}
+                        className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-xs font-medium text-rose-400 hover:bg-rose-950/30"
+                      >
+                        <Trash2 className="h-4 w-4" /> Chat löschen
+                      </button>
+                    </div>
+                  )}
                 </div>
-              </div>
-            );
-          })
+              );
+            })}
+          </div>
         )}
       </div>
 
-      {/* Modal: Neuer Chat erstellen */}
-      {isCreateModalOpen && (
-        <div
-          id="create-chat-modal"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-in fade-in duration-150"
-        >
-          <div className="w-full max-w-md rounded-2xl border border-zinc-800 bg-zinc-950 p-5 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
-              <h2 className="text-sm font-semibold text-zinc-100 flex items-center gap-2">
-                <Plus className="h-4 w-4 text-rose-400" />
-                Neuen Chat starten
-              </h2>
+      <button
+        onClick={() => openNewChat()}
+        className="absolute bottom-24 right-5 z-20 flex h-14 w-14 items-center justify-center rounded-full bg-rose-600 text-white shadow-[0_12px_35px_rgba(225,29,72,0.35)] transition-transform active:scale-95"
+        aria-label="Neuer Chat"
+      >
+        <Plus className="h-6 w-6" />
+      </button>
+
+      {isCreateModalOpen && selectedChar && (
+        <div className="fixed inset-0 z-50 flex items-end bg-black/75 backdrop-blur-sm sm:items-center sm:justify-center sm:p-4">
+          <div className="max-h-[88vh] w-full overflow-y-auto rounded-t-[30px] border border-zinc-800 bg-zinc-950 p-5 shadow-2xl sm:max-w-md sm:rounded-[28px]">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <img
+                  src={selectedChar.avatarUrl || fallbackAvatar}
+                  alt={selectedChar.name}
+                  referrerPolicy="no-referrer"
+                  className="h-12 w-12 rounded-full object-cover ring-1 ring-zinc-700"
+                />
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-rose-400">Neue Story</p>
+                  <h2 className="text-lg font-black text-white">{selectedChar.name}</h2>
+                </div>
+              </div>
               <button
                 onClick={() => setIsCreateModalOpen(false)}
-                className="rounded-lg p-1 text-zinc-400 hover:bg-zinc-900"
+                className="rounded-full bg-zinc-900 p-2 text-zinc-400"
               >
-                ✕
+                <X className="h-5 w-5" />
               </button>
             </div>
 
-            {/* Character selection */}
-            <div>
-              <label className="block text-xs font-medium text-zinc-300 mb-2">Charakter auswählen</label>
-              <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto p-1">
-                {characters.map((c) => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => setSelectedCharId(c.id)}
-                    className={`flex items-center gap-2.5 rounded-xl border p-2 text-left transition-all cursor-pointer ${
-                      selectedCharId === c.id
-                        ? 'border-rose-500 bg-rose-950/30 ring-1 ring-rose-500/50'
-                        : 'border-zinc-800 bg-zinc-900/60 hover:border-zinc-700'
-                    }`}
-                  >
-                    <img
-                      src={c.avatarUrl || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80'}
-                      alt={c.name}
-                      referrerPolicy="no-referrer"
-                      className="h-9 w-9 rounded-xl object-cover ring-1 ring-zinc-700"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-semibold text-zinc-100 truncate">{c.name}</p>
-                      <p className="text-[10px] text-zinc-400 truncate">{c.dominanceLevel || 'dominant'}</p>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Chat Title */}
-            <div>
-              <label className="block text-xs font-medium text-zinc-300 mb-1">Titel des Chats (Optional)</label>
-              <input
-                type="text"
-                value={newChatTitle}
-                onChange={(e) => setNewChatTitle(e.target.value)}
-                placeholder="z. B. Neuer Chat, Bibliothek..."
-                className="w-full rounded-xl border border-zinc-800 bg-zinc-900 p-2.5 text-xs text-zinc-100 focus:border-rose-500 focus:outline-none"
-              />
-            </div>
-
-            {/* Alternate Greetings Selection if character has multiple greetings */}
-            {availableGreetings.length > 1 && (
+            <div className="mt-5 space-y-5">
               <div>
-                <label className="block text-xs font-medium text-zinc-300 mb-1">
-                  Start-Nachricht (Greeting / Alternate Greetings)
+                <label className="mb-2 flex items-center gap-2 text-xs font-bold text-zinc-300">
+                  <Globe2 className="h-4 w-4 text-rose-400" /> Sprache
                 </label>
-                <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
-                  {availableGreetings.map((g, idx) => (
+                <div className="grid grid-cols-2 gap-2 rounded-2xl bg-zinc-900/70 p-1.5">
+                  {(['de', 'en'] as const).map(language => (
                     <button
-                      key={idx}
-                      type="button"
-                      onClick={() => setSelectedGreetingIndex(idx)}
-                      className={`w-full text-left p-2 rounded-xl text-xs border transition-all ${
-                        selectedGreetingIndex === idx
-                          ? 'border-rose-500 bg-rose-950/30 text-zinc-100 ring-1 ring-rose-500/50'
-                          : 'border-zinc-800 bg-zinc-900/60 text-zinc-400 hover:text-zinc-200'
+                      key={language}
+                      onClick={() => setNewChatLang(language)}
+                      className={`rounded-xl py-2.5 text-xs font-black transition-colors ${
+                        newChatLang === language
+                          ? 'bg-rose-600 text-white'
+                          : 'text-zinc-500 hover:text-zinc-200'
                       }`}
                     >
-                      <div className="font-semibold text-[10px] uppercase text-rose-400 mb-0.5">
-                        {idx === 0 ? 'Standard Greeting (first_mes)' : `Alternate Greeting #${idx}`}
-                      </div>
-                      <p className="line-clamp-2 italic text-[11px] leading-relaxed">
-                        {g.replace(/{{char}}/gi, selectedChar.name).replace(/{{user}}/gi, selectedChar.playerAddressName || 'User')}
-                      </p>
+                      {language === 'de' ? 'Deutsch' : 'English'}
                     </button>
                   ))}
                 </div>
+                <p className="mt-2 text-[11px] leading-relaxed text-zinc-600">
+                  Die Eröffnungsnachricht wird passend zur Chat-Sprache lokalisiert, ohne die gespeicherte Character Card zu verändern.
+                </p>
               </div>
-            )}
 
-            {/* Language Selection */}
-            <div>
-              <label className="block text-xs font-medium text-zinc-300 mb-1">Sprache für Generierung</label>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setNewChatLang('de')}
-                  className={`flex-1 rounded-xl py-2 text-xs font-medium border transition-all cursor-pointer ${
-                    newChatLang === 'de'
-                      ? 'border-rose-500 bg-rose-950/40 text-rose-300 ring-1 ring-rose-500/50'
-                      : 'border-zinc-800 bg-zinc-900 text-zinc-400'
-                  }`}
-                >
-                  Deutsch (CH - «ss»)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setNewChatLang('en')}
-                  className={`flex-1 rounded-xl py-2 text-xs font-medium border transition-all cursor-pointer ${
-                    newChatLang === 'en'
-                      ? 'border-rose-500 bg-rose-950/40 text-rose-300 ring-1 ring-rose-500/50'
-                      : 'border-zinc-800 bg-zinc-900 text-zinc-400'
-                  }`}
-                >
-                  English
-                </button>
-              </div>
-            </div>
+              {availableGreetings.length > 1 && (
+                <div>
+                  <label className="mb-2 block text-xs font-bold text-zinc-300">Greeting</label>
+                  <div className="space-y-2">
+                    {availableGreetings.map((greeting, index) => (
+                      <button
+                        key={index}
+                        onClick={() => setSelectedGreetingIndex(index)}
+                        className={`w-full rounded-2xl border p-3 text-left text-xs leading-relaxed ${
+                          selectedGreetingIndex === index
+                            ? 'border-rose-500/70 bg-rose-950/20 text-zinc-200'
+                            : 'border-zinc-800 bg-zinc-900/55 text-zinc-500'
+                        }`}
+                      >
+                        <span className="line-clamp-3">{previewGreeting(greeting, selectedChar)}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
-            {/* Information about greeting */}
-            <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/40 p-2.5">
-              <div className="flex items-center gap-2 text-[11px] text-zinc-300">
-                <Sparkles className="h-3.5 w-3.5 text-rose-400 shrink-0" />
-                <span>
-                  {availableGreetings.length > 0
-                    ? `Verwendet das gespeicherte Greeting von ${selectedChar.name}.`
-                    : `Generiert eine neue Eröffnungsszene für ${selectedChar.name}.`}
-                </span>
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex justify-end gap-2 pt-2 border-t border-zinc-800">
               <button
-                type="button"
-                onClick={() => setIsCreateModalOpen(false)}
-                className="rounded-xl bg-zinc-800 px-4 py-2 text-xs font-medium text-zinc-300 hover:bg-zinc-700 cursor-pointer"
-              >
-                Abbrechen
-              </button>
-              <button
-                type="button"
+                disabled={isStarting}
                 onClick={handleStartNewChat}
-                className="rounded-xl bg-gradient-to-r from-rose-600 to-rose-700 px-4 py-2 text-xs font-semibold text-white shadow-md hover:from-rose-500 cursor-pointer"
+                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-rose-600 px-4 py-3.5 text-sm font-black text-white shadow-lg disabled:opacity-50"
               >
-                Chat öffnen
+                {isStarting ? 'Greeting wird vorbereitet …' : 'Chat starten'}
+                {!isStarting && <ChevronRight className="h-4 w-4" />}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
       <DeleteConfirmModal
         isOpen={Boolean(chatToDelete)}
         onClose={() => setChatToDelete(null)}
-        onConfirm={() => {
-          if (chatToDelete) {
-            onDeleteChat(chatToDelete.id);
-            setChatToDelete(null);
-          }
-        }}
-        title="Chat löschen"
-        itemName={chatToDelete?.title || 'Diesen Chat'}
-        message={`Möchtest du den Chat "${chatToDelete?.title}" wirklich endgültig löschen?`}
+        onConfirm={() => chatToDelete && onDeleteChat(chatToDelete.id)}
+        itemName={chatToDelete ? characters.find(c => c.id === chatToDelete.characterId)?.name || 'Chat' : 'Chat'}
       />
 
-      {/* Edit Chat Settings Modal */}
-      {chatToEdit && (
-        <ChatSettingsModal
-          isOpen={Boolean(chatToEdit)}
-          onClose={() => setChatToEdit(null)}
-          chat={chatToEdit}
-          baseCharacter={getCharacterForChat(chatToEdit)}
-          onSaveChat={(updated) => {
-            onUpdateChat(updated);
-            setChatToEdit(null);
-          }}
-        />
-      )}
+      <ChatSettingsModal
+        isOpen={Boolean(chatToEdit)}
+        onClose={() => setChatToEdit(null)}
+        chat={chatToEdit}
+        baseCharacter={characters.find(c => c.id === chatToEdit?.characterId) || characters[0]}
+        onSaveChat={updated => {
+          onUpdateChat(updated);
+          setChatToEdit(null);
+        }}
+      />
     </div>
   );
 };

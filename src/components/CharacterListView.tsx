@@ -1,20 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Character } from '../types';
-import {
-  Users,
-  Plus,
-  Edit3,
-  MessageSquare,
-  Trash2,
-  Sparkles,
-  Shield,
-  Heart,
-  Flame,
-  Brain,
-  Camera,
-  Layers,
-  Smile
-} from 'lucide-react';
+import { Edit3, MessageCircle, Plus, Trash2 } from 'lucide-react';
 
 interface CharacterListViewProps {
   characters: Character[];
@@ -24,6 +10,13 @@ interface CharacterListViewProps {
   onDeleteCharacter: (characterId: string) => void;
 }
 
+const fallbackAvatar = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=500&q=80';
+
+function previewText(character: Character): string {
+  const description = character.description !== undefined ? character.description : character.appearance;
+  return description || character.personality || 'Noch keine Charakterbeschreibung.';
+}
+
 export const CharacterListView: React.FC<CharacterListViewProps> = ({
   characters,
   onSelectCharacterToChat,
@@ -31,142 +24,81 @@ export const CharacterListView: React.FC<CharacterListViewProps> = ({
   onCreateNewCharacter,
   onDeleteCharacter,
 }) => {
-  const [selectedPreviewChar, setSelectedPreviewChar] = useState<Character | null>(characters[0] || null);
-
   return (
-    <div className="flex h-full flex-col bg-zinc-950 text-zinc-100 overflow-y-auto">
-      {/* Header */}
-      <div className="sticky top-0 z-20 flex items-center justify-between border-b border-zinc-800/80 bg-zinc-950/85 px-4 py-3.5 backdrop-blur-md">
+    <div className="flex h-full flex-col overflow-hidden bg-[#09090b] text-zinc-100">
+      <div className="flex items-end justify-between gap-4 px-5 pb-4 pt-5">
         <div>
-          <h1 className="text-lg font-bold tracking-tight text-zinc-100 flex items-center gap-2">
-            <span className="bg-gradient-to-r from-rose-400 to-rose-600 bg-clip-text text-transparent">Meine Charaktere</span>
-          </h1>
-          <p className="text-[11px] text-zinc-400">
-            {characters.length} {characters.length === 1 ? 'dauerhaftes Profil' : 'dauerhafte Profile'}
-          </p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-rose-400/80">Deine Figuren</p>
+          <h1 className="mt-1 text-3xl font-black tracking-tight text-white">Charaktere</h1>
         </div>
-
         <button
           onClick={onCreateNewCharacter}
-          className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-rose-600 to-rose-700 px-3.5 py-2 text-xs font-semibold text-white shadow-md transition-all hover:from-rose-500 hover:to-rose-600 active:scale-95"
+          className="flex h-11 w-11 items-center justify-center rounded-full bg-rose-600 text-white shadow-lg active:scale-95"
+          aria-label="Neuer Charakter"
         >
-          <Plus className="h-4 w-4" />
-          <span>Neuer Charakter</span>
+          <Plus className="h-5 w-5" />
         </button>
       </div>
 
-      {/* Grid of Character Cards */}
-      <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-        {characters.map((char) => {
-          const isDean = char.id === 'char-dean';
-
-          return (
-            <div
-              key={char.id}
-              className="flex flex-col justify-between rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-4 transition-all hover:border-zinc-700 hover:bg-zinc-900/60 shadow-lg relative overflow-hidden"
+      <div className="flex-1 overflow-y-auto px-4 pb-8">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          {characters.map(character => (
+            <article
+              key={character.id}
+              className="group relative aspect-[3/4.35] overflow-hidden rounded-[26px] bg-zinc-900 shadow-xl ring-1 ring-zinc-900"
             >
-              {/* Top Row: Avatar & Core Info */}
-              <div>
-                <div className="flex items-start gap-3.5">
-                  <div className="relative shrink-0">
-                    <img
-                      src={char.avatarUrl || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80'}
-                      alt={char.name}
-                      referrerPolicy="no-referrer"
-                      className="h-16 w-16 rounded-2xl object-cover ring-2 ring-zinc-700/80 shadow-md"
-                    />
-                    {isDean && (
-                      <span className="absolute -top-1.5 -right-1.5 rounded-full bg-rose-600 px-1.5 py-0.5 text-[9px] font-bold text-white shadow">
-                        Haupt
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <h2 className="text-base font-bold text-zinc-100 truncate">{char.name}</h2>
-                      {char.age && (
-                        <span className="text-xs text-zinc-400 font-medium">{char.age} Jahre</span>
-                      )}
-                    </div>
-
-                    {/* Trait Chips */}
-                    <div className="mt-1.5 flex flex-wrap gap-1">
-                      <span className="rounded-md bg-zinc-800/90 px-2 py-0.5 text-[10px] font-medium text-rose-300 border border-zinc-700/60">
-                        {char.dominanceLevel || 'dominant'}
-                      </span>
-                      <span className="rounded-md bg-zinc-800/90 px-2 py-0.5 text-[10px] font-medium text-zinc-300 border border-zinc-700/60">
-                        Flirt: {char.flirtBehavior || 'intense'}
-                      </span>
-                      <span className="rounded-md bg-zinc-800/90 px-2 py-0.5 text-[10px] font-medium text-zinc-300 border border-zinc-700/60">
-                        Initiative: {char.initiativeLevel || 'high'}
-                      </span>
-                    </div>
-
-                    <p className="mt-2 text-xs text-zinc-400 line-clamp-2 leading-relaxed">
-                      {char.personality || char.appearance || 'Keine Beschreibung hinterlegt.'}
-                    </p>
+              <button
+                onClick={() => onSelectCharacterToChat(character.id)}
+                className="absolute inset-0 z-0 h-full w-full text-left"
+              >
+                <img
+                  src={character.avatarUrl || fallbackAvatar}
+                  alt={character.name}
+                  referrerPolicy="no-referrer"
+                  className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/15 to-transparent" />
+                <div className="absolute inset-x-0 bottom-0 p-3.5">
+                  <h2 className="truncate text-lg font-black text-white">{character.name}</h2>
+                  <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-zinc-300">{previewText(character)}</p>
+                  <div className="mt-3 flex items-center gap-1.5 text-[10px] font-bold text-rose-300">
+                    <MessageCircle className="h-3.5 w-3.5" /> Chat öffnen
                   </div>
                 </div>
+              </button>
 
-                {/* Additional Quick Details */}
-                <div className="mt-3.5 grid grid-cols-2 gap-2 text-[11px] rounded-xl bg-zinc-950/60 p-2.5 border border-zinc-900">
-                  <div>
-                    <span className="text-zinc-500 block text-[10px] uppercase font-semibold">Anrede</span>
-                    <span className="text-zinc-200 font-medium truncate block">{char.playerAddressName || 'Lidii'}</span>
-                  </div>
-                  <div>
-                    <span className="text-zinc-500 block text-[10px] uppercase font-semibold">Erinnerungen</span>
-                    <span className="text-zinc-200 font-medium">{char.memories?.length || 0} Einträge</span>
-                  </div>
-                  <div>
-                    <span className="text-zinc-500 block text-[10px] uppercase font-semibold">Gedanken</span>
-                    <span className="text-zinc-200 font-medium">{char.thoughtsEnabled !== false ? 'Aktiviert (*kursiv*)' : 'Aus'}</span>
-                  </div>
-                  <div>
-                    <span className="text-zinc-500 block text-[10px] uppercase font-semibold">Foto-Frequenz</span>
-                    <span className="text-zinc-200 font-medium">{char.imageFrequency || 'Gelegentlich'}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Bottom Row Actions */}
-              <div className="mt-4 flex items-center justify-between border-t border-zinc-800/80 pt-3">
-                <div className="flex gap-1.5">
-                  <button
-                    onClick={() => onEditCharacter(char)}
-                    className="flex items-center gap-1.5 rounded-xl border border-zinc-700/80 bg-zinc-800/80 px-3 py-1.5 text-xs font-medium text-zinc-200 hover:bg-zinc-700 hover:text-white transition-all"
-                  >
-                    <Edit3 className="h-3.5 w-3.5 text-zinc-400" />
-                    <span>Profil bearbeiten</span>
-                  </button>
-
-                  {!isDean && (
-                    <button
-                      onClick={() => {
-                        if (confirm(`Möchtest du den Charakter "${char.name}" unwiderruflich löschen?`)) {
-                          onDeleteCharacter(char.id);
-                        }
-                      }}
-                      className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-1.5 text-zinc-500 hover:bg-rose-950 hover:text-rose-400 transition-all"
-                      title="Löschen"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                </div>
-
+              <div className="absolute right-2.5 top-2.5 z-10 flex gap-1.5">
                 <button
-                  onClick={() => onSelectCharacterToChat(char.id)}
-                  className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-rose-600 to-rose-700 px-4 py-1.5 text-xs font-semibold text-white shadow-md hover:from-rose-500 transition-all active:scale-95"
+                  onClick={() => onEditCharacter(character)}
+                  className="flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-md transition-colors hover:bg-black/80"
+                  aria-label={`${character.name} bearbeiten`}
                 >
-                  <MessageSquare className="h-3.5 w-3.5" />
-                  <span>Chat starten</span>
+                  <Edit3 className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  onClick={() => {
+                    if (confirm(`Möchtest du den Charakter „${character.name}“ wirklich löschen?`)) {
+                      onDeleteCharacter(character.id);
+                    }
+                  }}
+                  className="flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-zinc-300 backdrop-blur-md transition-colors hover:bg-rose-950/80 hover:text-rose-300"
+                  aria-label={`${character.name} löschen`}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
                 </button>
               </div>
-            </div>
-          );
-        })}
+            </article>
+          ))}
+
+          <button
+            onClick={onCreateNewCharacter}
+            className="flex aspect-[3/4.35] flex-col items-center justify-center rounded-[26px] border border-dashed border-zinc-800 bg-zinc-950/40 px-4 text-center text-zinc-500 transition-colors hover:border-rose-500/50 hover:text-zinc-300"
+          >
+            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-zinc-900"><Plus className="h-5 w-5" /></span>
+            <span className="mt-3 text-sm font-bold">Neuer Charakter</span>
+            <span className="mt-1 text-[10px] leading-relaxed">Character Card V2 anlegen</span>
+          </button>
+        </div>
       </div>
     </div>
   );

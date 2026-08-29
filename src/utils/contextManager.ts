@@ -1,5 +1,6 @@
 import { DEFAULT_CHARACTERS, DEFAULT_CHATS } from '../data/defaultCharacters';
 import { Character, ChatSession, ModelSettings, ApiLog, Message, StoryContext } from '../types';
+import { migrateKnownDefaultCharacterArtifacts, normalizeLegacyCharacterToV2 } from './characterNormalizer';
 
 const STORAGE_KEY_CHARACTERS = 'rp_characters_v2';
 const STORAGE_KEY_ACTIVE_CHAR = 'rp_active_char_id_v2';
@@ -23,7 +24,6 @@ export function loadPendingJobs(): PendingJobInfo[] {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
-        // Filter out any stale jobs older than 1 hour
         const now = Date.now();
         return parsed.filter((j: any) => j && j.id && now - (j.createdAt || 0) < 3600000);
       }
@@ -53,30 +53,43 @@ export function removePendingJob(jobId: string): void {
   savePendingJobs(current);
 }
 
+export const LEGACY_IMPERSONATION_PROMPT = `Write {{user}}'s next response based only on the established conversation, scenario, user profile/persona and chat memory. Match {{user}}'s established writing style and perspective. Do not write actions, dialogue, thoughts or decisions for the other character. Do not invent prior meetings, relationship history, names, memories, knowledge or familiarity that are not established in the available context.`;
+export const DEFAULT_IMPERSONATION_PROMPT = `Write your next reply from the point of view of {{user}}, using the chat history so far as a guideline for the writing style of {{user}}. Write 1 reply only in internet RP style, italicize actions, and avoid quotation marks. Use markdown. Don't write as {{char}} or system. Don't describe actions of {{char}}.`;
+
 export const DEFAULT_SETTINGS: ModelSettings = {
   provider: 'openrouter',
   modelName: '',
   temperature: 0.88,
   maxOutputTokens: 2200,
-  contextWindowSize: 14,
+  contextSizeTokens: 32768,
+  topP: 1,
+  frequencyPenalty: 0,
+  presencePenalty: 0,
+  repetitionPenalty: 1,
+  promptNote: '',
+  promptNoteDepth: 1,
+  promptNoteRole: 'system',
+  assistantPrefill: '',
+  impersonationPrompt: DEFAULT_IMPERSONATION_PROMPT,
 };
 
 /**
  * Returns the effective character for a specific chat session by overlaying
- * any chat-specific character settings (Dominance, Dynamics, Humor, Style, etc.)
- * over the base character object.
+ * prompt-effective chat-specific Character Card V2 fields over the base character.
+ * Old saved override fields are retained for data compatibility but are no longer
+ * treated as a hidden parallel prompt system.
  */
 export function getEffectiveCharacter(character: Character, chat?: ChatSession): Character {
-  if (!character) return DEFAULT_CHARACTERS[0];
-  if (!chat || !chat.characterSettings) return character;
+  if (!character) return normalizeLegacyCharacterToV2(DEFAULT_CHARACTERS[0]);
+  const normalized = normalizeLegacyCharacterToV2(character);
+  if (!chat || !chat.characterSettings) return normalized;
 
   return {
-    ...character,
+    ...normalized,
     ...chat.characterSettings,
-    // Ensure critical core identifiers stay intact
-    id: character.id,
-    name: character.name,
-    avatarUrl: character.avatarUrl,
+    id: normalized.id,
+    name: normalized.name,
+    avatarUrl: normalized.avatarUrl,
   };
 }
 
@@ -86,37 +99,38 @@ export function loadSavedCharacters(): Character[] {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        // Sanitize default characters so any stale chase/Bronx startPrompt from older versions is cleanly reset
         return parsed.map((char: Character) => {
-          if (char.id === 'char-dean') {
+          let cleaned = migrateKnownDefaultCharacterArtifacts(char);
+          if (cleaned.id === 'char-dean') {
             const canonicalDean = DEFAULT_CHARACTERS.find((c) => c.id === 'char-dean');
-            if (
-              canonicalDean &&
-              (!char.startPrompt ||
-                char.startPrompt.includes('regungslos') ||
-                char.startPrompt.includes('Vorsprung') ||
-                char.startPrompt.includes('Garten') ||
-                char.startPrompt.includes('Collector'))
-            ) {
-              return {
-                ...char,
-                startPrompt: canonicalDean.startPrompt,
-                startPlot: canonicalDean.startPlot,
-                startBehavior: canonicalDean.startBehavior,
-                behaviorRules: canonicalDean.behaviorRules,
-                exampleDialogues: canonicalDean.exampleDialogues,
-                postHistoryInstructions: canonicalDean.postHistoryInstructions,
+            const bundledGreeting = `${cleaned.firstMes || ''}
+${cleaned.startPrompt || ''}`;
+            const isKnownBundledDean =
+              !cleaned.startPrompt ||
+              bundledGreeting.includes('Die schwere Holztür der Bibliothek') ||
+              bundledGreeting.includes('The heavy wooden door of the library') ||
+              bundledGreeting.includes('regungslos') ||
+              bundledGreeting.includes('Vorsprung') ||
+              bundledGreeting.includes('Garten') ||
+              (cleaned.description || '').includes('Wuchs in den rauen Strassenzügen von New York / Bronx auf.');
+            if (canonicalDean && isKnownBundledDean) {
+              cleaned = {
+                ...cleaned,
+                ...canonicalDean,
+                avatarUrl: cleaned.avatarUrl || canonicalDean.avatarUrl,
+                createdAt: cleaned.createdAt || canonicalDean.createdAt,
+                updatedAt: Date.now(),
               };
             }
           }
-          return char;
+          return normalizeLegacyCharacterToV2(migrateKnownDefaultCharacterArtifacts(cleaned));
         });
       }
     }
   } catch (e) {
     console.error('Failed to load characters from localStorage', e);
   }
-  return DEFAULT_CHARACTERS;
+  return DEFAULT_CHARACTERS.map((character) => normalizeLegacyCharacterToV2(migrateKnownDefaultCharacterArtifacts(character)));
 }
 
 export function saveCharacters(characters: Character[]): void {
@@ -130,9 +144,7 @@ export function saveCharacters(characters: Character[]): void {
 export function loadActiveCharacterId(characters: Character[]): string {
   try {
     const saved = localStorage.getItem(STORAGE_KEY_ACTIVE_CHAR);
-    if (saved && characters.some((c) => c.id === saved)) {
-      return saved;
-    }
+    if (saved && characters.some((c) => c.id === saved)) return saved;
   } catch (e) {
     console.error('Failed to load active char id', e);
   }
@@ -153,7 +165,6 @@ export function loadSavedChats(): ChatSession[] {
     if (raw !== null) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
-        // Filter/sanitize old stale chase messages from default chats
         return parsed.map((chat: ChatSession) => {
           if (chat.id === 'chat-dean-1') {
             const hasOldChase =
@@ -215,11 +226,22 @@ export function loadSavedSettings(): ModelSettings {
     const raw = localStorage.getItem(STORAGE_KEY_SETTINGS);
     if (raw) {
       const parsed = JSON.parse(raw);
-      return {
+      const migrated: ModelSettings = {
         ...DEFAULT_SETTINGS,
         ...parsed,
         provider: 'openrouter',
+        contextSizeTokens:
+          typeof parsed.contextSizeTokens === 'number' && parsed.contextSizeTokens >= 2048
+            ? parsed.contextSizeTokens
+            : DEFAULT_SETTINGS.contextSizeTokens,
+        impersonationPrompt:
+          !parsed.impersonationPrompt || parsed.impersonationPrompt === LEGACY_IMPERSONATION_PROMPT
+            ? DEFAULT_IMPERSONATION_PROMPT
+            : parsed.impersonationPrompt,
       };
+      // contextWindowSize was the old message-count cutoff. Keep it only as inert
+      // compatibility data; never reinterpret 14 messages as 14 tokens.
+      return migrated;
     }
   } catch (e) {
     console.error('Failed to load settings', e);
@@ -238,9 +260,7 @@ export function saveSettings(settings: ModelSettings): void {
 export function loadSavedLogs(): ApiLog[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_LOGS);
-    if (raw) {
-      return JSON.parse(raw);
-    }
+    if (raw) return JSON.parse(raw);
   } catch (e) {
     console.error('Failed to load logs', e);
   }
@@ -251,7 +271,7 @@ export function saveLogs(logs: ApiLog[]): void {
   try {
     localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(logs.slice(-60)));
   } catch (e) {
-    console.error('Failed to save logs', e);
+    console.error('Failed to save logs to localStorage', e);
   }
 }
 
@@ -278,28 +298,37 @@ export function importFullRPState(jsonString: string): {
   legacyContext?: StoryContext;
 } {
   const parsed = JSON.parse(jsonString);
-  if (!parsed) {
-    throw new Error('Ungültiges Dateiformat.');
-  }
+  if (!parsed) throw new Error('Ungültiges Dateiformat.');
 
-  // Version 2 structure
+  const importedSettings: ModelSettings = {
+    ...DEFAULT_SETTINGS,
+    ...(parsed.settings || {}),
+    provider: 'openrouter',
+    contextSizeTokens:
+      typeof parsed.settings?.contextSizeTokens === 'number' && parsed.settings.contextSizeTokens >= 2048
+        ? parsed.settings.contextSizeTokens
+        : DEFAULT_SETTINGS.contextSizeTokens,
+    impersonationPrompt:
+      !parsed.settings?.impersonationPrompt || parsed.settings.impersonationPrompt === LEGACY_IMPERSONATION_PROMPT
+        ? DEFAULT_IMPERSONATION_PROMPT
+        : parsed.settings.impersonationPrompt,
+  };
+
   if (Array.isArray(parsed.characters) && Array.isArray(parsed.chats)) {
     return {
-      characters: parsed.characters,
+      characters: parsed.characters.map((character: Character) => normalizeLegacyCharacterToV2(migrateKnownDefaultCharacterArtifacts(character))),
       chats: parsed.chats,
-      settings: parsed.settings || DEFAULT_SETTINGS,
+      settings: importedSettings,
     };
   }
 
-  // Legacy Version 1 structure fallback
   if (Array.isArray(parsed.messages)) {
     return {
       legacyMessages: parsed.messages,
       legacyContext: parsed.context,
-      settings: parsed.settings || DEFAULT_SETTINGS,
+      settings: importedSettings,
     };
   }
 
   throw new Error('Das Dokument enthält weder Charaktere noch Chat-Nachrichten.');
 }
-

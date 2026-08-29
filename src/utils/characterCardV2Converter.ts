@@ -1,14 +1,19 @@
-import { Character, MemoryItem } from '../types';
+import { Character, MemoryItem, PromptRole } from '../types';
 import { CharacterCardV2, CharacterCardV2Data } from '../types/characterCardV2';
 
+function validPromptRole(value: unknown): PromptRole {
+  return value === 'user' || value === 'assistant' || value === 'system' ? value : 'system';
+}
+
 /**
- * Converts a CharacterCardV2 (or V2 Data payload) into internal Character format
+ * Converts a CharacterCardV2 (or V2 Data payload) into internal Character format.
+ * Unknown extension data is preserved; common Chub depth_prompt data is also
+ * surfaced as editable Character's Note fields.
  */
 export function characterCardV2ToCharacter(card: CharacterCardV2 | CharacterCardV2Data, fallbackId?: string): Character {
   const data: CharacterCardV2Data = 'data' in card ? card.data : card;
   const charId = fallbackId || `char-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
 
-  // Convert character_book entries to memories
   const memories: MemoryItem[] = [];
   if (data.character_book && Array.isArray(data.character_book.entries)) {
     data.character_book.entries.forEach((entry, idx) => {
@@ -24,8 +29,9 @@ export function characterCardV2ToCharacter(card: CharacterCardV2 | CharacterCard
     });
   }
 
-  // Parse any existing extensions or fallback values
   const ex = data.extensions || {};
+  const depthPrompt = ex.depth_prompt && typeof ex.depth_prompt === 'object' ? ex.depth_prompt : undefined;
+  const depthValue = Number(depthPrompt?.depth);
 
   return {
     id: charId,
@@ -69,6 +75,9 @@ export function characterCardV2ToCharacter(card: CharacterCardV2 | CharacterCard
     creator: data.creator || '',
     characterVersion: data.character_version ?? '1.0',
     extensions: data.extensions || {},
+    characterNote: typeof depthPrompt?.prompt === 'string' ? depthPrompt.prompt : '',
+    characterNoteDepth: Number.isFinite(depthValue) ? Math.max(0, Math.floor(depthValue)) : 4,
+    characterNoteRole: validPromptRole(depthPrompt?.role),
     imageFrequency: ex.imageFrequency || 'occasional',
     imageStyleDescription: ex.imageStyleDescription || '',
     customInstructions: ex.customInstructions || '',
@@ -78,9 +87,7 @@ export function characterCardV2ToCharacter(card: CharacterCardV2 | CharacterCard
   };
 }
 
-/**
- * Converts internal Character object into a strict Character Card V2 compliant JSON object
- */
+/** Converts internal Character object into a strict Character Card V2 compliant JSON object. */
 export function characterToCharacterCardV2(character: Character): CharacterCardV2 {
   const characterBook = character.characterBook
     ? {
@@ -98,6 +105,51 @@ export function characterToCharacterCardV2(character: Character): CharacterCardV
         }),
       }
     : undefined;
+
+  const existingExtensions = character.extensions || {};
+  const existingDepthPrompt = existingExtensions.depth_prompt && typeof existingExtensions.depth_prompt === 'object'
+    ? existingExtensions.depth_prompt
+    : {};
+  const hasDepthPrompt =
+    character.characterNote !== undefined ||
+    existingExtensions.depth_prompt !== undefined;
+
+  const extensions: Record<string, any> = {
+    ...existingExtensions,
+    ...(hasDepthPrompt
+      ? {
+          depth_prompt: {
+            ...existingDepthPrompt,
+            prompt: character.characterNote ?? existingDepthPrompt.prompt ?? '',
+            depth: character.characterNoteDepth ?? existingDepthPrompt.depth ?? 4,
+            role: validPromptRole(character.characterNoteRole ?? existingDepthPrompt.role),
+          },
+        }
+      : {}),
+    avatarUrl: character.avatarUrl,
+    age: character.age,
+    relationshipToPlayer: character.relationshipToPlayer,
+    writingStyle: character.writingStyle,
+    toneOfVoice: character.toneOfVoice,
+    typicalPhrases: character.typicalPhrases,
+    playerAddressName: character.playerAddressName,
+    addressMode: character.addressMode,
+    nicknames: character.nicknames,
+    thoughtsEnabled: character.thoughtsEnabled,
+    initiativeLevel: character.initiativeLevel,
+    plotInitiative: character.plotInitiative,
+    pacing: character.pacing,
+    flirtBehavior: character.flirtBehavior,
+    dominanceLevel: character.dominanceLevel,
+    dynamics: character.dynamics,
+    humorLevel: character.humorLevel,
+    humorStyles: character.humorStyles,
+    behaviorRules: character.behaviorRules,
+    customInstructions: character.customInstructions,
+    imageFrequency: character.imageFrequency,
+    imageStyleDescription: character.imageStyleDescription,
+  };
+
   const v2Data: CharacterCardV2Data = {
     name: character.name || '',
     description: character.description !== undefined ? character.description : character.appearance || '',
@@ -113,55 +165,18 @@ export function characterToCharacterCardV2(character: Character): CharacterCardV
     tags: character.tags || [],
     creator: character.creator || '',
     character_version: character.characterVersion !== undefined ? character.characterVersion : '1.0',
-    extensions: {
-      ...character.extensions,
-      avatarUrl: character.avatarUrl,
-      age: character.age,
-      relationshipToPlayer: character.relationshipToPlayer,
-      writingStyle: character.writingStyle,
-      toneOfVoice: character.toneOfVoice,
-      typicalPhrases: character.typicalPhrases,
-      playerAddressName: character.playerAddressName,
-      addressMode: character.addressMode,
-      nicknames: character.nicknames,
-      thoughtsEnabled: character.thoughtsEnabled,
-      initiativeLevel: character.initiativeLevel,
-      plotInitiative: character.plotInitiative,
-      pacing: character.pacing,
-      flirtBehavior: character.flirtBehavior,
-      dominanceLevel: character.dominanceLevel,
-      dynamics: character.dynamics,
-      humorLevel: character.humorLevel,
-      humorStyles: character.humorStyles,
-      behaviorRules: character.behaviorRules,
-      customInstructions: character.customInstructions,
-      imageFrequency: character.imageFrequency,
-      imageStyleDescription: character.imageStyleDescription,
-    },
+    extensions,
   };
 
-  return {
-    spec: 'chara_card_v2',
-    spec_version: '2.0',
-    data: v2Data,
-  };
+  return { spec: 'chara_card_v2', spec_version: '2.0', data: v2Data };
 }
 
-/**
- * Validate whether an object conforms to CharacterCardV2 format
- */
 export function isValidV2Card(obj: any): boolean {
   if (!obj || typeof obj !== 'object') return false;
-  if (obj.spec === 'chara_card_v2' && obj.data && typeof obj.data === 'object') {
-    return true;
-  }
-  // Also check direct data payload with required fields
-  if (obj.name && (obj.description !== undefined || obj.personality !== undefined || obj.first_mes !== undefined)) {
-    return true;
-  }
+  if (obj.spec === 'chara_card_v2' && obj.data && typeof obj.data === 'object') return true;
+  if (obj.name && (obj.description !== undefined || obj.personality !== undefined || obj.first_mes !== undefined)) return true;
   return false;
 }
 
-// Aliases for convenience
 export const characterToV2Card = characterToCharacterCardV2;
 export const v2CardToCharacter = characterCardV2ToCharacter;
