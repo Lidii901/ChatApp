@@ -37,9 +37,6 @@ if old not in s:
     raise SystemExit('summarize selector not found')
 s = s.replace(old, new)
 
-# ChatSettingsModal is opened on top of the drawer. Closing/saving that modal
-# intentionally reveals the still-open drawer, so the test must close the drawer
-# before trying the header button again.
 old = '''  await page.getByText('Chat Settings').waitFor();
   await page.locator('header button').last().click();
 
@@ -55,41 +52,68 @@ if old not in s:
     raise SystemExit('drawer nested-settings block not found')
 s = s.replace(old, new)
 
-old = '''  await desc.fill(`${base}\\nAUDIT_CHAT_OVERRIDE_MARKER`);
+old = '''  await page.getByText('Chat konfigurieren', { exact: true }).click();
+  const desc = page.locator('label').filter({ hasText: 'Description' }).locator('textarea');
+  const base = await desc.inputValue();
+  await desc.fill(`${base}\\nAUDIT_CHAT_OVERRIDE_MARKER`);
   await page.getByRole('button', { name: 'Übernehmen' }).click();
 
-  await page.locator('#header-menu-drawer-btn').click();'''
-new = '''  await desc.fill(`${base}\\nAUDIT_CHAT_OVERRIDE_MARKER`);
-  await page.getByRole('button', { name: 'Übernehmen' }).click();
-  await closeDrawer();
-
-  await page.locator('#header-menu-drawer-btn').click();'''
-if old not in s:
-    raise SystemExit('override first save block not found')
-s = s.replace(old, new)
-
-old = '''  await page.getByRole('button', { name: /Basis/ }).click();
+  await page.locator('#header-menu-drawer-btn').click();
+  await page.getByText('Chat konfigurieren', { exact: true }).click();
+  assert.match(await page.locator('label').filter({ hasText: 'Description' }).locator('textarea').inputValue(), /AUDIT_CHAT_OVERRIDE_MARKER/);
+  await page.getByRole('button', { name: /Basis/ }).click();
   await page.getByRole('button', { name: 'Übernehmen' }).click();
 
-  await page.locator('#header-menu-drawer-btn').click();'''
-new = '''  await page.getByRole('button', { name: /Basis/ }).click();
-  await page.getByRole('button', { name: 'Übernehmen' }).click();
-  await closeDrawer();
-
-  await page.locator('#header-menu-drawer-btn').click();'''
-if old not in s:
-    raise SystemExit('override reset block not found')
-s = s.replace(old, new)
-
-old = '''  assert.doesNotMatch(await page.locator('label').filter({ hasText: 'Description' }).locator('textarea').inputValue(), /AUDIT_CHAT_OVERRIDE_MARKER/);
+  await page.locator('#header-menu-drawer-btn').click();
+  await page.getByText('Chat konfigurieren', { exact: true }).click();
+  assert.doesNotMatch(await page.locator('label').filter({ hasText: 'Description' }).locator('textarea').inputValue(), /AUDIT_CHAT_OVERRIDE_MARKER/);
   await page.locator('header button').last().click();
   return 'override save/reopen/reset';'''
-new = '''  assert.doesNotMatch(await page.locator('label').filter({ hasText: 'Description' }).locator('textarea').inputValue(), /AUDIT_CHAT_OVERRIDE_MARKER/);
+new = '''  await page.getByText('Chat konfigurieren', { exact: true }).click();
+  const desc = page.locator('label').filter({ hasText: 'Description' }).locator('textarea');
+  await page.waitForFunction(() => {
+    const label = Array.from(document.querySelectorAll('label')).find(el => (el.textContent || '').includes('Description'));
+    const textarea = label?.querySelector('textarea');
+    return Boolean(textarea && textarea.value.trim().length > 0);
+  });
+  const base = await desc.inputValue();
+  await desc.fill(`${base}\\nAUDIT_CHAT_OVERRIDE_MARKER`);
+  await page.getByRole('button', { name: 'Übernehmen' }).click();
+  await page.waitForFunction(() => {
+    const chats = JSON.parse(localStorage.getItem('rp_chat_sessions_v2') || '[]');
+    return chats.some(chat => String(chat?.characterSettings?.description || '').includes('AUDIT_CHAT_OVERRIDE_MARKER'));
+  });
+  await closeDrawer();
+
+  await page.locator('#header-menu-drawer-btn').click();
+  await page.getByText('Chat konfigurieren', { exact: true }).click();
+  await page.waitForFunction(() => {
+    const label = Array.from(document.querySelectorAll('label')).find(el => (el.textContent || '').includes('Description'));
+    const textarea = label?.querySelector('textarea');
+    return Boolean(textarea && textarea.value.includes('AUDIT_CHAT_OVERRIDE_MARKER'));
+  });
+  assert.match(await page.locator('label').filter({ hasText: 'Description' }).locator('textarea').inputValue(), /AUDIT_CHAT_OVERRIDE_MARKER/);
+  await page.getByRole('button', { name: /Basis/ }).click();
+  await page.getByRole('button', { name: 'Übernehmen' }).click();
+  await page.waitForFunction(() => {
+    const chats = JSON.parse(localStorage.getItem('rp_chat_sessions_v2') || '[]');
+    return chats.some(chat => chat?.characterSettings && !String(chat.characterSettings.description || '').includes('AUDIT_CHAT_OVERRIDE_MARKER'));
+  });
+  await closeDrawer();
+
+  await page.locator('#header-menu-drawer-btn').click();
+  await page.getByText('Chat konfigurieren', { exact: true }).click();
+  await page.waitForFunction(() => {
+    const label = Array.from(document.querySelectorAll('label')).find(el => (el.textContent || '').includes('Description'));
+    const textarea = label?.querySelector('textarea');
+    return Boolean(textarea && textarea.value.trim().length > 0 && !textarea.value.includes('AUDIT_CHAT_OVERRIDE_MARKER'));
+  });
+  assert.doesNotMatch(await page.locator('label').filter({ hasText: 'Description' }).locator('textarea').inputValue(), /AUDIT_CHAT_OVERRIDE_MARKER/);
   await page.locator('header button').last().click();
   await closeDrawer();
-  return 'override save/reopen/reset';'''
+  return 'override save/localStorage/reopen/reset';'''
 if old not in s:
-    raise SystemExit('override final close block not found')
+    raise SystemExit('override test block not found')
 s = s.replace(old, new)
 
 p.write_text(s)
