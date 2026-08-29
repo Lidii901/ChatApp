@@ -99,15 +99,17 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
 
           const state = importFullRPState(content);
           if (state.characters && state.chats) {
+            // A full restore replaces the app state. Close this modal before handing
+            // the restored state to the parent so stale modal UI cannot survive the
+            // character/chat replacement or block the restored navigation.
+            onClose();
+            setStatusMessage(null);
             onRestoreFullBackup({
               characters: state.characters,
               chats: state.chats,
               settings: state.settings,
             });
-            setStatusMessage({
-              type: 'success',
-              text: 'Vollständiges Multi-Charakter Backup erfolgreich wiederhergestellt!',
-            });
+            return;
           } else if (state.legacyMessages) {
             onImportMessagesToChat(state.legacyMessages, true);
             setStatusMessage({
