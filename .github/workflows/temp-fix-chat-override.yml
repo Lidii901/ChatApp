@@ -1,0 +1,36 @@
+name: Temporary Chat Override Basis Fix
+
+on:
+  push:
+    branches: [ui-mechat-rework]
+    paths:
+      - 'tests/fix_chat_override_basis.py'
+      - '.github/workflows/temp-fix-chat-override.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ui-mechat-rework
+
+      - name: Apply targeted fix
+        run: python3 tests/fix_chat_override_basis.py
+
+      - name: Commit targeted app fix
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/App.tsx src/components/ChatMenuDrawer.tsx
+          if git diff --cached --quiet; then
+            echo 'No changes to commit.'
+            exit 0
+          fi
+          git commit -m 'Fix per-chat override reset to base character'
+          git push origin HEAD:ui-mechat-rework
