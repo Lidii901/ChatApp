@@ -19,7 +19,7 @@ export const IMITATE_DEFAULT_MODEL = 'nvidia/nemotron-3-ultra-550b-a55b:free';
 export const SUMMARIZE_DEFAULT_MODEL = 'nvidia/nemotron-3-super-120b-a12b:free';
 export const FALLBACK_FREE_MODEL = 'google/gemma-4-26b-a4b-it:free';
 
-export const DEFAULT_IMPERSONATION_PROMPT = `Write {{user}}'s next response based only on the established conversation, scenario, user profile/persona and chat memory. Match {{user}}'s established writing style and perspective. Do not write actions, dialogue, thoughts or decisions for {{char}}. Do not invent prior meetings, relationship history, names, memories, knowledge or familiarity that are not established in the available context.`;
+export const DEFAULT_IMPERSONATION_PROMPT = `Write {{user}}'s next response based only on the established conversation, scenario, user profile/persona and chat memory. Match {{user}}'s established writing style and perspective. Do not write actions, dialogue, thoughts or decisions for the other character. Do not invent prior meetings, relationship history, names, memories, knowledge or familiarity that are not established in the available context.`;
 
 interface ServerJob {
   id: string;
@@ -440,7 +440,7 @@ async function generateCharacterReply(character: any, messages: any[], storyCont
     ...generation,
     defaultModel: CHAT_DEFAULT_MODEL,
     modelOverride: settings?.modelName,
-    timeoutMs: 50000,
+    timeoutMs: 180000,
   });
   return { ...result, text: withAssistantPrefill(payload.assistantPrefill, result.text), payload };
 }
@@ -455,7 +455,7 @@ async function generateStartReply(character: any, language: 'de' | 'en', setting
     ...generation,
     defaultModel: CHAT_DEFAULT_MODEL,
     modelOverride: settings?.modelName,
-    timeoutMs: 50000,
+    timeoutMs: 180000,
   });
   return { ...result, text: withAssistantPrefill(payload.assistantPrefill, result.text), payload };
 }
@@ -484,7 +484,7 @@ async function generateImitateReply(character: any, messages: any[], storyContex
     ...generation,
     defaultModel: IMITATE_DEFAULT_MODEL,
     modelOverride: settings?.modelName,
-    timeoutMs: 50000,
+    timeoutMs: 180000,
   });
 }
 

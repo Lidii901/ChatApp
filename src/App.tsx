@@ -31,6 +31,7 @@ import { Header } from './components/Header';
 import { Navigation, MainTab } from './components/Navigation';
 import { ChatListView } from './components/ChatListView';
 import { CharacterListView } from './components/CharacterListView';
+import { SettingsHomeView } from './components/SettingsHomeView';
 import { ChatMenuDrawer } from './components/ChatMenuDrawer';
 import { ChatMessage } from './components/ChatMessage';
 import { TypingIndicator } from './components/TypingIndicator';
@@ -523,6 +524,12 @@ export default function App() {
           setActiveImitateJobId(null);
           setIsImitating(false);
           setErrorMessage(job.error || 'Konnte keinen Entwurf generieren.');
+          addLog({
+            type: 'error',
+            status: 'error',
+            model: settings.modelName || 'openrouter',
+            message: job.error || 'Imitate Job fehlgeschlagen',
+          });
         }
       } catch (err) {
         console.warn('Imitate poll error', err);
@@ -564,6 +571,14 @@ export default function App() {
             setChats((prev) => prev.map((c) => c.id === targetChatId
               ? { ...c, messages: [...c.messages, newMsg], updatedAt: Date.now() }
               : c));
+            addLog({
+              type: 'photo',
+              status: 'success',
+              model: job.result.modelUsed || 'openrouter',
+              latencyMs: job.result.latencyMs,
+              message: `${charObj.name} hat ein Foto gesendet`,
+            });
+            setTimeout(() => scrollToBottom(), 100);
           }
         } else if ((job.status === 'failed' || job.status === 'error') && isSubscribed) {
           clearInterval(interval);
@@ -638,6 +653,25 @@ export default function App() {
           chatId: currentChatId,
           createdAt: Date.now(),
         });
+      } else if (data.content) {
+        setIsGenerating(false);
+        const messageRole = (data.role || (activeCharacter.id === 'char-dean' ? 'dean' : 'character')) as 'dean' | 'character';
+        const charMsg: Message = {
+          id: `msg-${Date.now()}`,
+          role: messageRole,
+          content: data.content,
+          timestamp: data.timestamp || Date.now(),
+          speakerName: data.speakerName || activeCharacter.name,
+        };
+        updateCurrentChat((c) => ({ ...c, messages: [...updatedMessages, charMsg], updatedAt: Date.now() }));
+        addLog({
+          type: 'chat',
+          status: 'success',
+          model: data.modelUsed || settings.modelName || 'openrouter',
+          latencyMs: data.latencyMs || Date.now() - startTime,
+          message: `${activeCharacter.name} Antwort generiert (${data.content.length} Zeichen)`,
+        });
+        setTimeout(() => scrollToBottom(), 100);
       }
     } catch (err: any) {
       const errorMsg = err.message || 'Verbindung zum KI-Modell fehlgeschlagen.';
@@ -657,6 +691,7 @@ export default function App() {
     if (isImitating || isGenerating) return;
     setIsImitating(true);
     setErrorMessage(null);
+    const startTime = Date.now();
     try {
       const response = await fetch('/api/jobs/imitate', {
         method: 'POST',
@@ -682,10 +717,29 @@ export default function App() {
           chatId: activeChat.id,
           createdAt: Date.now(),
         });
+      } else if (data.draft) {
+        setIsImitating(false);
+        const draftText = data.draft;
+        setInput((prev) => (prev.trim() ? `${prev}\n\n${draftText}` : draftText));
+        addLog({
+          type: 'imitate',
+          status: 'success',
+          model: data.modelUsed || settings.modelName || 'openrouter',
+          latencyMs: data.latencyMs || Date.now() - startTime,
+          message: 'Imitate Me Entwurf generiert',
+        });
       }
     } catch (err: any) {
-      setErrorMessage(err.message || 'Konnte keinen Entwurf generieren.');
+      const errorMsg = err.message || 'Konnte keinen Entwurf generieren.';
+      setErrorMessage(errorMsg);
       setIsImitating(false);
+      addLog({
+        type: 'error',
+        status: 'error',
+        model: settings.modelName || 'openrouter',
+        latencyMs: Date.now() - startTime,
+        message: errorMsg,
+      });
     }
   };
 
@@ -914,23 +968,11 @@ export default function App() {
               )}
 
               {activeTab === 'settings' && (
-                <div className="h-full overflow-y-auto p-4 space-y-4">
-                  <div className="border-b border-zinc-800 pb-3">
-                    <h1 className="text-lg font-bold text-zinc-100">Einstellungen & System</h1>
-                    <p className="text-xs text-zinc-400">Verwalte Modell-Parameter, Backups und Diagnose</p>
-                  </div>
-                  <div className="space-y-2">
-                    <button onClick={() => setIsSettingsModalOpen(true)} className="w-full flex items-center justify-between rounded-xl border border-zinc-800 bg-zinc-900/60 p-3.5 text-xs text-zinc-200 hover:bg-zinc-900">
-                      <span className="font-semibold">Modell-Parameter (Temperatur, Tokens, Context)</span><span className="text-rose-400">Öffnen ▾</span>
-                    </button>
-                    <button onClick={() => setIsImportExportModalOpen(true)} className="w-full flex items-center justify-between rounded-xl border border-zinc-800 bg-zinc-900/60 p-3.5 text-xs text-zinc-200 hover:bg-zinc-900">
-                      <span className="font-semibold">Daten-Backup, Export & Import</span><span className="text-rose-400">Öffnen ▾</span>
-                    </button>
-                    <button onClick={() => setIsDiagnosticsModalOpen(true)} className="w-full flex items-center justify-between rounded-xl border border-zinc-800 bg-zinc-900/60 p-3.5 text-xs text-zinc-200 hover:bg-zinc-900">
-                      <span className="font-semibold">Diagnose & API-Logs</span><span className="text-rose-400">Öffnen ▾</span>
-                    </button>
-                  </div>
-                </div>
+                <SettingsHomeView
+                  onOpenGeneration={() => setIsSettingsModalOpen(true)}
+                  onOpenData={() => setIsImportExportModalOpen(true)}
+                  onOpenDiagnostics={() => setIsDiagnosticsModalOpen(true)}
+                />
               )}
             </div>
 
