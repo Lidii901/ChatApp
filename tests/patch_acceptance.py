@@ -37,4 +37,59 @@ if old not in s:
     raise SystemExit('summarize selector not found')
 s = s.replace(old, new)
 
+# ChatSettingsModal is opened on top of the drawer. Closing/saving that modal
+# intentionally reveals the still-open drawer, so the test must close the drawer
+# before trying the header button again.
+old = '''  await page.getByText('Chat Settings').waitFor();
+  await page.locator('header button').last().click();
+
+  await page.locator('#header-menu-drawer-btn').click();
+  await page.getByText('Sprache wechseln', { exact: true }).click();'''
+new = '''  await page.getByText('Chat Settings').waitFor();
+  await page.locator('header button').last().click();
+  await closeDrawer();
+
+  await page.locator('#header-menu-drawer-btn').click();
+  await page.getByText('Sprache wechseln', { exact: true }).click();'''
+if old not in s:
+    raise SystemExit('drawer nested-settings block not found')
+s = s.replace(old, new)
+
+old = '''  await desc.fill(`${base}\\nAUDIT_CHAT_OVERRIDE_MARKER`);
+  await page.getByRole('button', { name: 'Übernehmen' }).click();
+
+  await page.locator('#header-menu-drawer-btn').click();'''
+new = '''  await desc.fill(`${base}\\nAUDIT_CHAT_OVERRIDE_MARKER`);
+  await page.getByRole('button', { name: 'Übernehmen' }).click();
+  await closeDrawer();
+
+  await page.locator('#header-menu-drawer-btn').click();'''
+if old not in s:
+    raise SystemExit('override first save block not found')
+s = s.replace(old, new)
+
+old = '''  await page.getByRole('button', { name: /Basis/ }).click();
+  await page.getByRole('button', { name: 'Übernehmen' }).click();
+
+  await page.locator('#header-menu-drawer-btn').click();'''
+new = '''  await page.getByRole('button', { name: /Basis/ }).click();
+  await page.getByRole('button', { name: 'Übernehmen' }).click();
+  await closeDrawer();
+
+  await page.locator('#header-menu-drawer-btn').click();'''
+if old not in s:
+    raise SystemExit('override reset block not found')
+s = s.replace(old, new)
+
+old = '''  assert.doesNotMatch(await page.locator('label').filter({ hasText: 'Description' }).locator('textarea').inputValue(), /AUDIT_CHAT_OVERRIDE_MARKER/);
+  await page.locator('header button').last().click();
+  return 'override save/reopen/reset';'''
+new = '''  assert.doesNotMatch(await page.locator('label').filter({ hasText: 'Description' }).locator('textarea').inputValue(), /AUDIT_CHAT_OVERRIDE_MARKER/);
+  await page.locator('header button').last().click();
+  await closeDrawer();
+  return 'override save/reopen/reset';'''
+if old not in s:
+    raise SystemExit('override final close block not found')
+s = s.replace(old, new)
+
 p.write_text(s)
