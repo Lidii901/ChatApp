@@ -1,4 +1,5 @@
 export type Role = 'character' | 'lidii' | 'dean';
+export type PromptRole = 'system' | 'user' | 'assistant';
 
 export interface ChatImage {
   url: string;
@@ -36,6 +37,7 @@ export interface StoryContext {
   sceneSummary: string;
   keyEvents: string[];
   memories?: MemoryItem[];
+  /** Chub-style written user profile / persona text used by {{profile}}. */
   profile?: string;
 }
 
@@ -94,6 +96,7 @@ export interface Character {
   customInstructions?: string;
   memories: MemoryItem[];
 
+  // Prompt-effective Character Card V2 / Chub fields.
   description?: string;
   personality: string;
   scenario?: string;
@@ -109,6 +112,15 @@ export interface Character {
   characterVersion?: string;
   extensions?: Record<string, any>;
 
+  /** Chub Character's Note / common V2 depth_prompt extension. */
+  characterNote?: string;
+  characterNoteDepth?: number;
+  characterNoteRole?: PromptRole;
+
+  /** Per-chat Chub lorebook overrides, overlaid by getEffectiveCharacter. */
+  loreScanDepthOverride?: number;
+  loreTokenBudgetOverride?: number;
+
   createdAt: number;
   updatedAt: number;
 }
@@ -122,7 +134,13 @@ export interface ChatCharacterSettings {
   mesExample?: string;
   systemPrompt?: string;
   postHistoryInstructions?: string;
+  characterNote?: string;
+  characterNoteDepth?: number;
+  characterNoteRole?: PromptRole;
+  loreScanDepthOverride?: number;
+  loreTokenBudgetOverride?: number;
 
+  // Retained only for backwards-compatible saved data.
   dominanceLevel?: DominanceLevel;
   dynamics?: string[];
   humorLevel?: 'dark' | 'dry' | 'playful' | 'serious';
@@ -159,7 +177,19 @@ export interface ModelSettings {
   modelName: string;
   temperature: number;
   maxOutputTokens: number;
-  contextWindowSize: number;
+  /** Total prompt/context target. History is packed by tokens instead of message count. */
+  contextSizeTokens: number;
+  /** Legacy saved setting; retained only for migration. */
+  contextWindowSize?: number;
+  topP: number;
+  frequencyPenalty: number;
+  presencePenalty: number;
+  repetitionPenalty: number;
+  promptNote: string;
+  promptNoteDepth: number;
+  promptNoteRole: PromptRole;
+  assistantPrefill: string;
+  impersonationPrompt: string;
 }
 
 export interface AsyncJob {
