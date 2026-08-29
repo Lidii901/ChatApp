@@ -81,13 +81,16 @@ const zeroDepth = buildChatPayload({ character: { ...base, characterBook: { exte
 ] } }, messages: [{ role: 'user', content: 'dragon' }] });
 assert.equal(zeroDepth.activatedCharacterBookEntries.length, 0);
 
+// Lore scans the configured full scan window before the separate token-based history pack.
 const independentDepth = buildChatPayload({ character: { ...base, characterBook: { extensions: {}, scan_depth: 3, entries: [
-  { keys: ['old-trigger'], content: 'FOUND_OUTSIDE_PAYLOAD_WINDOW', extensions: {}, enabled: true, insertion_order: 0 },
-] } }, contextWindowSize: 1, messages: [
-  { role: 'user', content: 'old-trigger' }, { role: 'assistant', content: 'middle' }, { role: 'user', content: 'latest' },
+  { keys: ['old-trigger'], content: 'FOUND_OUTSIDE_PACKED_HISTORY', extensions: {}, enabled: true, insertion_order: 0 },
+] } }, promptConfig: { contextSizeTokens: 2048, maxOutputTokens: 512 }, messages: [
+  { role: 'user', content: `old-trigger ${'x'.repeat(6000)}` },
+  { role: 'assistant', content: 'middle' },
+  { role: 'user', content: 'latest' },
 ] });
-assert.equal(independentDepth.chatHistory.length, 1);
-assert.equal(independentDepth.activatedCharacterBookEntries[0]?.content, 'FOUND_OUTSIDE_PAYLOAD_WINDOW');
+assert.equal(independentDepth.rawHistoryKept.some((message: any) => String(message.content).includes('old-trigger')), false);
+assert.equal(independentDepth.activatedCharacterBookEntries[0]?.content, 'FOUND_OUTSIDE_PACKED_HISTORY');
 
 const recursive = buildChatPayload({ character: { ...base, characterBook: { extensions: {}, scan_depth: 1, recursive_scanning: true, entries: [
   { keys: ['first-key'], content: 'second-key appears here', extensions: {}, enabled: true, insertion_order: 0 },
@@ -160,7 +163,7 @@ assert.equal(numericIdEntry.id, 1);
 const invalidStringId: CharacterBookEntry = { ...numericIdEntry, id: 'not-a-number' };
 void invalidStringId;
 console.log(JSON.stringify(cases, null, 2));
-console.log('All 14 production prompt/converter assertions passed.');
+console.log('Production prompt/converter assertions passed.');
 
 // OpenRouter returns errors in JSON even with HTTP 200. Both primary and fallback must be rejected.
 process.env.NODE_ENV = 'test';
