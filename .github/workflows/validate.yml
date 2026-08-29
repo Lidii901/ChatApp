@@ -24,7 +24,7 @@ jobs:
         with:
           node-version: 22
 
-      - name: Apply Chub parity completion patch
+      - name: Apply preview runtime patch
         run: python3 scripts/apply_chub_parity_finish.py
 
       - name: Install dependencies
@@ -51,13 +51,13 @@ jobs:
       - name: Imitate Me knowledge-boundary regression tests
         run: npx tsx tests/imitateKnowledge.test.ts
 
-      - name: Commit parity completion
+      - name: Commit preview runtime patch
         if: github.event_name == 'push'
         run: |
           if ! git diff --quiet; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add src/utils/contextManager.ts src/App.tsx
-            git commit -m "Finish Chub parity settings migration"
+            git add src/App.tsx server.ts
+            git commit -m "Fix preview async reliability and settings hub"
             git push origin HEAD:ui-mechat-rework
           fi
