@@ -264,26 +264,28 @@ export const CharacterEditorModal: React.FC<CharacterEditorModalProps> = ({ isOp
   };
 
   const tabs: Array<{ id: Tab; label: string; icon: React.ReactNode }> = [
-    { id: 'info', label: 'Info', icon: <User className="h-4 w-4" /> },
-    { id: 'definition', label: 'Definition', icon: <FileText className="h-4 w-4" /> },
+    { id: 'info', label: 'Profil', icon: <User className="h-4 w-4" /> },
+    { id: 'definition', label: 'Charakter', icon: <FileText className="h-4 w-4" /> },
     { id: 'start', label: 'Start', icon: <Sparkles className="h-4 w-4" /> },
-    { id: 'advanced', label: 'Advanced', icon: <Settings2 className="h-4 w-4" /> },
-    { id: 'lore', label: 'Lorebook', icon: <BookOpen className="h-4 w-4" /> },
+    { id: 'advanced', label: 'Erweitert', icon: <Settings2 className="h-4 w-4" /> },
+    { id: 'lore', label: 'Character Book', icon: <BookOpen className="h-4 w-4" /> },
   ];
 
   return (
     <div className="fixed inset-0 z-50 flex items-end bg-black/80 backdrop-blur-sm sm:items-center sm:justify-center sm:p-4">
       <div className="flex h-[94vh] w-full flex-col overflow-hidden rounded-t-[30px] border border-zinc-800 bg-[#0b0b0d] shadow-2xl sm:max-w-3xl sm:rounded-[30px]">
         <style>{`
-          .field { width: 100%; border: 1px solid rgb(39 39 42); border-radius: .9rem; background: rgb(24 24 27 / .78); padding: .7rem .85rem; color: rgb(244 244 245); outline: none; }
-          .field:focus { border-color: rgb(244 63 94 / .65); }
+          .field { width: 100%; border: 1px solid rgb(39 39 42); border-radius: .9rem; background: rgb(24 24 27 / .78); padding: .78rem .9rem; color: rgb(244 244 245); outline: none; }
+          .field:focus { border-color: rgb(244 63 94 / .65); box-shadow: 0 0 0 1px rgb(244 63 94 / .14); }
+          .field::placeholder { color: rgb(82 82 91); }
         `}</style>
         <header className="flex items-center justify-between border-b border-zinc-900 px-5 py-4">
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-rose-400">Character Card V2</p>
-            <h2 className="mt-1 text-lg font-black text-white">{character ? formData.name || 'Charakter bearbeiten' : 'Neuer Charakter'}</h2>
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-rose-400">Chub / Character Card V2</p>
+            <h2 className="mt-1 truncate text-lg font-black text-white">{character ? formData.name || 'Charakter bearbeiten' : 'Neuer Charakter'}</h2>
+            <p className="mt-1 text-[11px] text-zinc-600">Die Character-Felder werden direkt für die KI verwendet.</p>
           </div>
-          <button onClick={onClose} className="rounded-full bg-zinc-900 p-2 text-zinc-400"><X className="h-5 w-5" /></button>
+          <button onClick={onClose} className="ml-3 shrink-0 rounded-full bg-zinc-900 p-2 text-zinc-400"><X className="h-5 w-5" /></button>
         </header>
 
         <nav className="flex gap-1 overflow-x-auto border-b border-zinc-900 px-3 py-2 scrollbar-none">
@@ -297,12 +299,14 @@ export const CharacterEditorModal: React.FC<CharacterEditorModalProps> = ({ isOp
         <main className="flex-1 overflow-y-auto px-5 py-5 text-sm text-zinc-300">
           {activeTab === 'info' && (
             <section className="space-y-5">
-              <div className="rounded-2xl border border-emerald-900/30 bg-emerald-950/10 p-3 text-xs leading-relaxed text-emerald-200/80">
-                Info-Felder sind Metadaten. Creator Notes und Tags werden gespeichert/exportiert, aber gemäss Character Card V2 nicht in den KI-Prompt eingefügt.
-              </div>
+              <SectionIntro
+                eyebrow="Profil"
+                title="Wer ist der Charakter?"
+                text="Name und Avatar sind die sichtbaren Profildaten. Creator Notes und Tags sind nur Metadaten und beeinflussen die Antworten nicht."
+              />
               <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Name" required><input value={formData.name || ''} onChange={e => setFormData({ ...formData, name: e.target.value })} className="field" placeholder="Charaktername" /></Field>
-                <Field label="Name von {{user}}"><input value={formData.playerAddressName || ''} onChange={e => setFormData({ ...formData, playerAddressName: e.target.value })} className="field" placeholder="User" /></Field>
+                <Field label="Charaktername" required><input value={formData.name || ''} onChange={e => setFormData({ ...formData, name: e.target.value })} className="field" placeholder="z. B. Dean" /></Field>
+                <Field label="Name von dir / {{user}}" hint="Dieser Name ersetzt {{user}} in der Card."><input value={formData.playerAddressName || ''} onChange={e => setFormData({ ...formData, playerAddressName: e.target.value })} className="field" placeholder="User" /></Field>
               </div>
               <Field label="Avatar">
                 <div className="flex items-center gap-4">
@@ -316,75 +320,138 @@ export const CharacterEditorModal: React.FC<CharacterEditorModalProps> = ({ isOp
                   </div>
                 </div>
               </Field>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Alter (App-Metadatum)"><input value={formData.age || ''} onChange={e => setFormData({ ...formData, age: e.target.value })} className="field" /></Field>
-                <Field label="Character Version"><input value={formData.characterVersion || ''} onChange={e => setFormData({ ...formData, characterVersion: e.target.value })} className="field" placeholder="1.0" /></Field>
-              </div>
-              <Field label="Creator"><input value={formData.creator || ''} onChange={e => setFormData({ ...formData, creator: e.target.value })} className="field" /></Field>
-              <Field label="Tags (Komma-getrennt)"><input value={(formData.tags || []).join(', ')} onChange={e => setFormData({ ...formData, tags: e.target.value.split(',').map(v => v.trim()).filter(Boolean) })} className="field" /></Field>
-              <Field label="Creator Notes" hint="Nur für Menschen sichtbar; wirkt nicht auf den Charakter."><textarea rows={4} value={formData.creatorNotes || ''} onChange={e => setFormData({ ...formData, creatorNotes: e.target.value })} className="field" /></Field>
+
+              <details className="rounded-2xl border border-zinc-800 bg-zinc-950/55 p-4">
+                <summary className="cursor-pointer text-xs font-black text-zinc-300">Metadaten & Anzeige</summary>
+                <div className="mt-4 space-y-4">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Field label="Alter (App-Anzeige)"><input value={formData.age || ''} onChange={e => setFormData({ ...formData, age: e.target.value })} className="field" /></Field>
+                    <Field label="Character Version"><input value={formData.characterVersion || ''} onChange={e => setFormData({ ...formData, characterVersion: e.target.value })} className="field" placeholder="1.0" /></Field>
+                  </div>
+                  <Field label="Creator"><input value={formData.creator || ''} onChange={e => setFormData({ ...formData, creator: e.target.value })} className="field" /></Field>
+                  <Field label="Tags (Komma-getrennt)"><input value={(formData.tags || []).join(', ')} onChange={e => setFormData({ ...formData, tags: e.target.value.split(',').map(v => v.trim()).filter(Boolean) })} className="field" /></Field>
+                  <Field label="Creator Notes" hint="Nur für Menschen sichtbar; wird nicht in den KI-Prompt eingefügt."><textarea rows={4} value={formData.creatorNotes || ''} onChange={e => setFormData({ ...formData, creatorNotes: e.target.value })} className="field" /></Field>
+                </div>
+              </details>
             </section>
           )}
 
           {activeTab === 'definition' && (
-            <section className="space-y-5">
-              <PromptNotice />
-              <Field label="Description" hint="Aussehen, Backstory, Verhalten, wichtige Fakten und Beziehungen können hier gemeinsam beschrieben werden.">
-                <textarea rows={10} value={formData.description || ''} onChange={e => setFormData({ ...formData, description: e.target.value })} className="field" placeholder="Wer ist {{char}}? Was muss das Modell dauerhaft wissen?" />
-              </Field>
-              <Field label="Personality" hint="Kompakte Persönlichkeit, Stimme und wiederkehrende Verhaltensmuster.">
-                <textarea rows={6} value={formData.personality || ''} onChange={e => setFormData({ ...formData, personality: e.target.value })} className="field" placeholder="Persönlichkeit, Ton, Verhaltensmuster …" />
-              </Field>
-              <Field label="Scenario" hint="Aktuelle Umstände und Beziehungsstatus am Start. Hier sollte z. B. eindeutig stehen, ob Figuren Fremde sind oder Vorgeschichte haben.">
-                <textarea rows={6} value={formData.scenario || ''} onChange={e => setFormData({ ...formData, scenario: e.target.value })} className="field" placeholder="Wo beginnt die Story und wie stehen {{char}} und {{user}} zueinander?" />
-              </Field>
+            <section className="space-y-4">
+              <SectionIntro
+                eyebrow="Character Definition"
+                title="So soll sich die Figur anfühlen"
+                text="Diese freien Textfelder entsprechen den zentralen Chub-/Character-Card-Feldern und gehen direkt in den Prompt."
+              />
+
+              <PromptCard
+                title="Aussehen & Hintergrund"
+                technical="Description"
+                hint="Beschreibe Aussehen, Körperbau, Kleidung, Alter, Herkunft, Beruf, Backstory und andere dauerhafte Fakten über {{char}}."
+              >
+                <textarea rows={9} value={formData.description || ''} onChange={e => setFormData({ ...formData, description: e.target.value })} className="field" placeholder="Wie sieht {{char}} aus? Wer ist er/sie? Welche dauerhaften Fakten muss die KI kennen?" />
+              </PromptCard>
+
+              <PromptCard
+                title="Verhalten & Persönlichkeit"
+                technical="Personality"
+                hint="Hier bestimmst du, wie {{char}} handelt, spricht, reagiert und welche wiederkehrenden Verhaltensmuster er/sie hat."
+              >
+                <textarea rows={8} value={formData.personality || ''} onChange={e => setFormData({ ...formData, personality: e.target.value })} className="field" placeholder="Wie verhält sich {{char}}? Ton, Temperament, Sprache, Initiative, typische Reaktionen …" />
+              </PromptCard>
+
+              <PromptCard
+                title="Szenario & Beziehung am Start"
+                technical="Scenario"
+                hint="Beschreibe die aktuelle Ausgangslage. Besonders wichtig: Kennen sich {{char}} und {{user}} bereits oder treffen sie sich zum ersten Mal?"
+              >
+                <textarea rows={7} value={formData.scenario || ''} onChange={e => setFormData({ ...formData, scenario: e.target.value })} className="field" placeholder="Ort, Situation, Ausgangslage und tatsächlicher Beziehungs-/Wissensstand …" />
+              </PromptCard>
             </section>
           )}
 
           {activeTab === 'start' && (
-            <section className="space-y-5">
-              <PromptNotice />
-              <Field label="Initial Message / first_mes" hint="Erste Nachricht der Card. Bei anderer Chat-Sprache lokalisiert die App nur die Chat-Kopie; die gespeicherte Card bleibt unverändert.">
-                <textarea rows={10} value={formData.firstMes || ''} onChange={e => setFormData({ ...formData, firstMes: e.target.value })} className="field" placeholder="Erste Nachricht von {{char}} …" />
-              </Field>
-              <Field label="Alternate Greetings" hint="Zusätzliche Startnachrichten / Swipes.">
+            <section className="space-y-4">
+              <SectionIntro
+                eyebrow="Conversation Start"
+                title="So beginnt der Chat"
+                text="Die Startnachricht prägt Stil, Perspektive und Dynamik besonders stark. Die gespeicherte Card bleibt unverändert, wenn die App sie für einen EN/DE-Chat lokalisiert."
+              />
+
+              <PromptCard
+                title="Startnachricht"
+                technical="first_mes"
+                hint="Die erste Nachricht von {{char}}. Sie wird beim Start als Character-Nachricht verwendet."
+              >
+                <textarea rows={11} value={formData.firstMes || ''} onChange={e => setFormData({ ...formData, firstMes: e.target.value })} className="field" placeholder="Was sagt oder tut {{char}} als Erstes?" />
+              </PromptCard>
+
+              <PromptCard
+                title="Alternative Startnachrichten"
+                technical="alternate_greetings"
+                hint="Zusätzliche Startvarianten wie bei Chub-Swipes."
+              >
                 <div className="space-y-2">
                   {(formData.alternateGreetings || []).map((greeting, index) => (
                     <div key={index} className="flex gap-2">
                       <textarea rows={4} value={greeting} onChange={e => { const list = [...(formData.alternateGreetings || [])]; list[index] = e.target.value; setFormData({ ...formData, alternateGreetings: list }); }} className="field flex-1" />
-                      <button onClick={() => setFormData({ ...formData, alternateGreetings: (formData.alternateGreetings || []).filter((_, i) => i !== index) })} className="self-start rounded-xl bg-zinc-900 p-2.5 text-zinc-500 hover:text-rose-400"><Trash2 className="h-4 w-4" /></button>
+                      <button type="button" onClick={() => setFormData({ ...formData, alternateGreetings: (formData.alternateGreetings || []).filter((_, i) => i !== index) })} className="self-start rounded-xl bg-zinc-900 p-2.5 text-zinc-500 hover:text-rose-400"><Trash2 className="h-4 w-4" /></button>
                     </div>
                   ))}
                   <div className="flex gap-2">
-                    <textarea rows={3} value={newGreeting} onChange={e => setNewGreeting(e.target.value)} className="field flex-1" placeholder="Weiteres Greeting …" />
-                    <button onClick={() => { if (!newGreeting.trim()) return; setFormData({ ...formData, alternateGreetings: [...(formData.alternateGreetings || []), newGreeting] }); setNewGreeting(''); }} className="self-start rounded-xl bg-rose-600 p-2.5 text-white"><Plus className="h-4 w-4" /></button>
+                    <textarea rows={3} value={newGreeting} onChange={e => setNewGreeting(e.target.value)} className="field flex-1" placeholder="Weitere Startvariante …" />
+                    <button type="button" onClick={() => { if (!newGreeting.trim()) return; setFormData({ ...formData, alternateGreetings: [...(formData.alternateGreetings || []), newGreeting] }); setNewGreeting(''); }} className="self-start rounded-xl bg-rose-600 p-2.5 text-white"><Plus className="h-4 w-4" /></button>
                   </div>
                 </div>
-              </Field>
-              <Field label="Example Dialogues / mes_example" hint="Dialogbeispiele; <START>, {{user}} und {{char}} können verwendet werden.">
+              </PromptCard>
+
+              <PromptCard
+                title="Beispieldialoge"
+                technical="mes_example"
+                hint="Zeige der KI, wie {{char}} spricht und reagiert. Du kannst <START>, {{user}} und {{char}} verwenden."
+              >
                 <textarea rows={12} value={formData.mesExample || ''} onChange={e => setFormData({ ...formData, mesExample: e.target.value })} className="field font-mono text-xs" placeholder={'<START>\n{{user}}: …\n{{char}}: …'} />
-              </Field>
+              </PromptCard>
             </section>
           )}
 
           {activeTab === 'advanced' && (
-            <section className="space-y-5">
-              <PromptNotice />
-              <Field label="System Prompt" hint="Character Card V2: ersetzt den globalen System Prompt, wenn nicht leer. {{original}} wird unterstützt.">
-                <textarea rows={8} value={formData.systemPrompt || ''} onChange={e => setFormData({ ...formData, systemPrompt: e.target.value })} className="field font-mono text-xs" placeholder="Leer = globaler Fallback" />
-              </Field>
-              <Field label="Post History Instructions" hint="Character Card V2: steht nach der Chat History. {{original}} und Prompt-Makros werden unterstützt.">
-                <textarea rows={8} value={formData.postHistoryInstructions || ''} onChange={e => setFormData({ ...formData, postHistoryInstructions: e.target.value })} className="field font-mono text-xs" />
-              </Field>
+            <section className="space-y-4">
+              <SectionIntro
+                eyebrow="Advanced Definitions"
+                title="Feinsteuerung"
+                text="Diese Felder sind optional. Lass sie leer, wenn die normale Character Definition ausreicht."
+              />
 
-              <div className="rounded-2xl border border-rose-900/25 bg-rose-950/10 p-4">
-                <p className="text-xs font-black text-rose-200">Character's Note</p>
-                <p className="mt-1 text-[11px] leading-relaxed text-zinc-500">Chub platziert diese Notiz an einer bestimmten Tiefe innerhalb der Chat History. Importierte <code>extensions.depth_prompt</code>-Daten werden hier ebenfalls sichtbar.</p>
+              <PromptCard
+                title="System Prompt"
+                technical="system_prompt"
+                hint="Character Card V2: steht am Anfang des Prompts. {{original}} wird unterstützt. Leer bedeutet: globalen Fallback verwenden."
+              >
+                <textarea rows={8} value={formData.systemPrompt || ''} onChange={e => setFormData({ ...formData, systemPrompt: e.target.value })} className="field font-mono text-xs" placeholder="Optional …" />
+              </PromptCard>
+
+              <PromptCard
+                title="Post-History Instructions"
+                technical="post_history_instructions"
+                hint="Character Card V2: steht nach der Chat History und hat dadurch starken Einfluss auf die nächste Antwort. {{original}} und Prompt-Makros werden unterstützt."
+              >
+                <textarea rows={8} value={formData.postHistoryInstructions || ''} onChange={e => setFormData({ ...formData, postHistoryInstructions: e.target.value })} className="field font-mono text-xs" placeholder="Optional …" />
+              </PromptCard>
+
+              <div className="rounded-2xl border border-zinc-800 bg-zinc-950/65 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-black text-zinc-100">Character's Note</p>
+                    <p className="mt-1 text-[11px] leading-relaxed text-zinc-500">Chub-artige Notiz an einer wählbaren Tiefe innerhalb der Chat History. Importierte <code>extensions.depth_prompt</code>-Daten werden hier sichtbar.</p>
+                  </div>
+                  <span className="rounded-lg bg-zinc-900 px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-zinc-600">Depth Prompt</span>
+                </div>
                 <div className="mt-4 space-y-4">
-                  <Field label="Note"><textarea rows={5} value={formData.characterNote || ''} onChange={e => setFormData({ ...formData, characterNote: e.target.value })} className="field font-mono text-xs" placeholder="Optional …" /></Field>
+                  <Field label="Notiz"><textarea rows={5} value={formData.characterNote || ''} onChange={e => setFormData({ ...formData, characterNote: e.target.value })} className="field font-mono text-xs" placeholder="Optional …" /></Field>
                   <div className="grid grid-cols-2 gap-3">
-                    <Field label="Depth"><input type="number" min={0} max={100} value={formData.characterNoteDepth ?? 4} onChange={e => setFormData({ ...formData, characterNoteDepth: Math.max(0, Number(e.target.value) || 0) })} className="field" /></Field>
-                    <Field label="Role">
+                    <Field label="Tiefe"><input type="number" min={0} max={100} value={formData.characterNoteDepth ?? 4} onChange={e => setFormData({ ...formData, characterNoteDepth: Math.max(0, Number(e.target.value) || 0) })} className="field" /></Field>
+                    <Field label="Rolle">
                       <select value={formData.characterNoteRole || 'system'} onChange={e => setFormData({ ...formData, characterNoteRole: e.target.value as PromptRole })} className="field">
                         <option value="system">System</option><option value="user">User</option><option value="assistant">Assistant</option>
                       </select>
@@ -393,26 +460,30 @@ export const CharacterEditorModal: React.FC<CharacterEditorModalProps> = ({ isOp
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4">
-                <p className="text-xs font-black text-zinc-200">App-spezifisch: Situative Bilder</p>
-                <p className="mt-1 text-[11px] leading-relaxed text-zinc-600">Diese Felder steuern nur die Bildfunktion und sind keine Character-Card-Promptfelder.</p>
+              <details className="rounded-2xl border border-zinc-800 bg-zinc-950/55 p-4">
+                <summary className="cursor-pointer text-xs font-black text-zinc-300">Situative Bilder (App-Funktion)</summary>
+                <p className="mt-2 text-[11px] leading-relaxed text-zinc-600">Diese Felder gehören nicht zur Character Card V2 und steuern nur die Bildfunktion der App.</p>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
                   <select value={formData.imageFrequency || 'occasional'} onChange={e => setFormData({ ...formData, imageFrequency: e.target.value as ImageFrequency })} className="field">
                     <option value="disabled">Deaktiviert</option><option value="rare">Selten</option><option value="occasional">Gelegentlich</option><option value="frequent">Häufig</option><option value="very_frequent">Sehr häufig</option>
                   </select>
                   <input value={formData.imageStyleDescription || ''} onChange={e => setFormData({ ...formData, imageStyleDescription: e.target.value })} className="field" placeholder="Bildstil / Look" />
                 </div>
-              </div>
+              </details>
             </section>
           )}
 
           {activeTab === 'lore' && (
             <section className="space-y-5">
-              <PromptNotice />
+              <SectionIntro
+                eyebrow="Character Book"
+                title="Lore & Schlüsselwörter"
+                text="Einträge werden nur aktiviert, wenn ihre Schlüsselwörter bzw. Regeln greifen. Damit bleiben Details verfügbar, ohne dauerhaft den gesamten Prompt zu füllen."
+              />
               <div className="grid gap-3 sm:grid-cols-3">
-                <Field label="Scan depth"><input type="number" min={0} value={book.scan_depth ?? 4} onChange={e => updateBook({ scan_depth: Number(e.target.value) })} className="field" /></Field>
-                <Field label="Token budget"><input type="number" min={0} value={book.token_budget ?? ''} onChange={e => updateBook({ token_budget: e.target.value === '' ? undefined : Number(e.target.value) })} className="field" placeholder="optional" /></Field>
-                <Field label="Recursive scanning"><button onClick={() => updateBook({ recursive_scanning: !book.recursive_scanning })} className={`field flex items-center justify-between ${book.recursive_scanning ? 'text-emerald-300' : 'text-zinc-500'}`}>{book.recursive_scanning ? 'Aktiv' : 'Aus'} <ChevronDown className="h-4 w-4" /></button></Field>
+                <Field label="Scan-Tiefe"><input type="number" min={0} value={book.scan_depth ?? 4} onChange={e => updateBook({ scan_depth: Number(e.target.value) })} className="field" /></Field>
+                <Field label="Token-Budget"><input type="number" min={0} value={book.token_budget ?? ''} onChange={e => updateBook({ token_budget: e.target.value === '' ? undefined : Number(e.target.value) })} className="field" placeholder="optional" /></Field>
+                <Field label="Rekursives Scannen"><button type="button" onClick={() => updateBook({ recursive_scanning: !book.recursive_scanning })} className={`field flex items-center justify-between ${book.recursive_scanning ? 'text-emerald-300' : 'text-zinc-500'}`}>{book.recursive_scanning ? 'Aktiv' : 'Aus'} <ChevronDown className="h-4 w-4" /></button></Field>
               </div>
 
               <div className="space-y-3">
@@ -420,17 +491,17 @@ export const CharacterEditorModal: React.FC<CharacterEditorModalProps> = ({ isOp
                   <div key={index} className="rounded-2xl border border-zinc-800 bg-zinc-950/80 p-4">
                     <div className="flex items-center justify-between gap-3">
                       <input value={entry.name || ''} onChange={e => updateEntry(index, { name: e.target.value })} className="min-w-0 flex-1 bg-transparent text-sm font-black text-zinc-200 outline-none" placeholder={`Lore Entry ${index + 1}`} />
-                      <button onClick={() => removeEntry(index)} className="rounded-xl p-2 text-zinc-600 hover:bg-rose-950/30 hover:text-rose-400"><Trash2 className="h-4 w-4" /></button>
+                      <button type="button" onClick={() => removeEntry(index)} className="rounded-xl p-2 text-zinc-600 hover:bg-rose-950/30 hover:text-rose-400"><Trash2 className="h-4 w-4" /></button>
                     </div>
                     <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                      <Field label="Keys"><input value={(entry.keys || []).join(', ')} onChange={e => updateEntry(index, { keys: e.target.value.split(',').map(v => v.trim()).filter(Boolean) })} className="field" placeholder="library, rain" /></Field>
-                      <Field label="Secondary keys"><input value={(entry.secondary_keys || []).join(', ')} onChange={e => updateEntry(index, { secondary_keys: e.target.value.split(',').map(v => v.trim()).filter(Boolean) })} className="field" /></Field>
+                      <Field label="Schlüsselwörter"><input value={(entry.keys || []).join(', ')} onChange={e => updateEntry(index, { keys: e.target.value.split(',').map(v => v.trim()).filter(Boolean) })} className="field" placeholder="library, rain" /></Field>
+                      <Field label="Sekundäre Schlüssel"><input value={(entry.secondary_keys || []).join(', ')} onChange={e => updateEntry(index, { secondary_keys: e.target.value.split(',').map(v => v.trim()).filter(Boolean) })} className="field" /></Field>
                     </div>
-                    <Field label="Content"><textarea rows={5} value={entry.content} onChange={e => updateEntry(index, { content: e.target.value })} className="field" /></Field>
+                    <Field label="Inhalt"><textarea rows={5} value={entry.content} onChange={e => updateEntry(index, { content: e.target.value })} className="field" /></Field>
                     <div className="mt-3 grid grid-cols-3 gap-2">
-                      <Field label="Priority"><input type="number" value={entry.priority ?? 0} onChange={e => updateEntry(index, { priority: Number(e.target.value) || 0 })} className="field" /></Field>
-                      <Field label="Insertion order"><input type="number" value={entry.insertion_order ?? index} onChange={e => updateEntry(index, { insertion_order: Number(e.target.value) || 0 })} className="field" /></Field>
-                      <Field label="Probability %"><input type="number" min={0} max={100} value={entryProbability(entry)} onChange={e => updateEntry(index, { probability: e.target.value === '' ? undefined : Math.max(0, Math.min(100, Number(e.target.value))), useProbability: e.target.value !== '' })} className="field" placeholder="100" /></Field>
+                      <Field label="Priorität"><input type="number" value={entry.priority ?? 0} onChange={e => updateEntry(index, { priority: Number(e.target.value) || 0 })} className="field" /></Field>
+                      <Field label="Reihenfolge"><input type="number" value={entry.insertion_order ?? index} onChange={e => updateEntry(index, { insertion_order: Number(e.target.value) || 0 })} className="field" /></Field>
+                      <Field label="Chance %"><input type="number" min={0} max={100} value={entryProbability(entry)} onChange={e => updateEntry(index, { probability: e.target.value === '' ? undefined : Math.max(0, Math.min(100, Number(e.target.value))), useProbability: e.target.value !== '' })} className="field" placeholder="100" /></Field>
                     </div>
                     {entry.selective && (
                       <Field label="Selective Logic" hint="AND ANY = mindestens ein Secondary Key; AND ALL = alle; NOT ANY/NOT ALL schliessen passende Secondary Keys aus.">
@@ -440,10 +511,10 @@ export const CharacterEditorModal: React.FC<CharacterEditorModalProps> = ({ isOp
                       </Field>
                     )}
                     <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
-                      <Toggle label="Enabled" active={entry.enabled !== false} onClick={() => updateEntry(index, { enabled: entry.enabled === false })} />
-                      <Toggle label="Constant" active={entry.constant === true} onClick={() => updateEntry(index, { constant: !entry.constant })} />
-                      <Toggle label="Selective" active={entry.selective === true} onClick={() => updateEntry(index, { selective: !entry.selective })} />
-                      <Toggle label="Case sensitive" active={entry.case_sensitive === true} onClick={() => updateEntry(index, { case_sensitive: !entry.case_sensitive })} />
+                      <Toggle label="Aktiv" active={entry.enabled !== false} onClick={() => updateEntry(index, { enabled: entry.enabled === false })} />
+                      <Toggle label="Permanent" active={entry.constant === true} onClick={() => updateEntry(index, { constant: !entry.constant })} />
+                      <Toggle label="Selektiv" active={entry.selective === true} onClick={() => updateEntry(index, { selective: !entry.selective })} />
+                      <Toggle label="Gross/Klein beachten" active={entry.case_sensitive === true} onClick={() => updateEntry(index, { case_sensitive: !entry.case_sensitive })} />
                       <select value={entry.position || 'after_char'} onChange={e => updateEntry(index, { position: e.target.value as 'before_char' | 'after_char' })} className="rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-zinc-400">
                         <option value="before_char">before_char</option><option value="after_char">after_char</option>
                       </select>
@@ -451,8 +522,8 @@ export const CharacterEditorModal: React.FC<CharacterEditorModalProps> = ({ isOp
                   </div>
                 ))}
 
-                <button onClick={() => updateBook({ entries: [...book.entries, createLoreEntry(book)] })} className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-zinc-800 py-4 text-xs font-bold text-zinc-500 hover:border-rose-500/40 hover:text-rose-300">
-                  <Plus className="h-4 w-4" /> Lore Entry hinzufügen
+                <button type="button" onClick={() => updateBook({ entries: [...book.entries, createLoreEntry(book)] })} className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-zinc-800 py-4 text-xs font-bold text-zinc-500 hover:border-rose-500/40 hover:text-rose-300">
+                  <Plus className="h-4 w-4" /> Lore-Eintrag hinzufügen
                 </button>
               </div>
             </section>
@@ -460,7 +531,7 @@ export const CharacterEditorModal: React.FC<CharacterEditorModalProps> = ({ isOp
         </main>
 
         <footer className="flex items-center justify-between gap-3 border-t border-zinc-900 bg-[#0b0b0d]/95 px-5 py-4">
-          <p className="hidden text-[10px] leading-relaxed text-zinc-600 sm:block">Promptfelder sind im Diagnostics Inspector nachvollziehbar.</p>
+          <p className="hidden text-[10px] leading-relaxed text-zinc-600 sm:block">Gespeichert wird als Chub-/Character-Card-V2-kompatible Promptstruktur.</p>
           <button onClick={handleSave} className="ml-auto flex items-center gap-2 rounded-2xl bg-rose-600 px-5 py-3 text-sm font-black text-white shadow-lg"><Save className="h-4 w-4" /> {saved ? 'Gespeichert' : 'Speichern'}</button>
         </footer>
       </div>
@@ -476,9 +547,24 @@ const Field: React.FC<{ label: string; hint?: string; required?: boolean; childr
   </label>
 );
 
-const PromptNotice = () => (
-  <div className="rounded-2xl border border-rose-900/25 bg-rose-950/10 p-3 text-xs leading-relaxed text-rose-100/75">
-    Alles in diesem Bereich wirkt auf die Character- oder Prompt-Steuerung. Es ist kein dekoratives Profilfeld.
+const SectionIntro: React.FC<{ eyebrow: string; title: string; text: string }> = ({ eyebrow, title, text }) => (
+  <div className="pb-1">
+    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-rose-400/80">{eyebrow}</p>
+    <h3 className="mt-1 text-xl font-black text-white">{title}</h3>
+    <p className="mt-2 max-w-2xl text-xs leading-relaxed text-zinc-500">{text}</p>
+  </div>
+);
+
+const PromptCard: React.FC<{ title: string; technical: string; hint: string; children: React.ReactNode }> = ({ title, technical, hint, children }) => (
+  <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
+    <div className="mb-3 flex items-start justify-between gap-3">
+      <div>
+        <h4 className="text-sm font-black text-zinc-100">{title}</h4>
+        <p className="mt-1 text-[11px] leading-relaxed text-zinc-500">{hint}</p>
+      </div>
+      <span className="shrink-0 rounded-lg bg-rose-950/25 px-2 py-1 text-[9px] font-bold text-rose-400/80">{technical}</span>
+    </div>
+    {children}
   </div>
 );
 
