@@ -1,10 +1,9 @@
-name: Temporary Final Acceptance Fixes
+name: Temporary Backup Restore Fix
 
 on:
   push:
     branches: [ui-mechat-rework]
     paths:
-      - 'tests/fix_chat_override_basis.py'
       - '.github/workflows/temp-fix-chat-override.yml'
 
 permissions:
@@ -19,18 +18,52 @@ jobs:
         with:
           ref: ui-mechat-rework
 
-      - name: Apply final targeted fixes
-        run: python3 tests/fix_chat_override_basis.py
+      - name: Close full-backup restore modal synchronously
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
 
-      - name: Commit final app fixes
+          p = Path('src/components/ImportExportModal.tsx')
+          s = p.read_text()
+          old = '''          if (state.characters && state.chats) {
+            onRestoreFullBackup({
+              characters: state.characters,
+              chats: state.chats,
+              settings: state.settings,
+            });
+            setStatusMessage({
+              type: 'success',
+              text: 'Vollständiges Multi-Charakter Backup erfolgreich wiederhergestellt!',
+            });
+          } else if (state.legacyMessages) {'''
+          new = '''          if (state.characters && state.chats) {
+            // A full restore replaces the app state. Close this modal before handing
+            // the restored state to the parent so stale modal UI cannot survive the
+            // character/chat replacement or block the restored navigation.
+            onClose();
+            setStatusMessage(null);
+            onRestoreFullBackup({
+              characters: state.characters,
+              chats: state.chats,
+              settings: state.settings,
+            });
+            return;
+          } else if (state.legacyMessages) {'''
+          if old not in s:
+            raise SystemExit('full-backup restore block not found')
+          p.write_text(s.replace(old, new, 1))
+          PY
+
+      - name: Commit backup restore fix
         shell: bash
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add src/App.tsx src/components/ChatMenuDrawer.tsx src/components/CharacterEditorModal.tsx server.ts
+          git add src/components/ImportExportModal.tsx
           if git diff --cached --quiet; then
             echo 'No changes to commit.'
             exit 0
           fi
-          git commit -m 'Fix remaining acceptance issues'
+          git commit -m 'Close full backup restore modal immediately'
           git push origin HEAD:ui-mechat-rework
