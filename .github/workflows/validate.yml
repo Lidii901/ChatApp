@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [ui-mechat-rework]
+    branches: [main]
 
 jobs:
   validate:
@@ -42,3 +42,6 @@ jobs:
 
       - name: Imitate Me knowledge-boundary regression tests
         run: npx tsx tests/imitateKnowledge.test.ts
+
+      - name: API error and greeting fallback regression tests
+        run: npx tsx tests/apiErrors.test.ts

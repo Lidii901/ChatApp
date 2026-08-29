@@ -26,6 +26,7 @@ import {
   getEffectiveCharacter,
 } from './utils/contextManager';
 import { normalizeLegacyCharacterToV2 } from './utils/characterNormalizer';
+import { formatApiError, greetingFallbackMessage } from './utils/apiErrors';
 import { DEFAULT_CHARACTERS, DEFAULT_CHATS } from './data/defaultCharacters';
 import { Header } from './components/Header';
 import { Navigation, MainTab } from './components/Navigation';
@@ -273,11 +274,16 @@ export default function App() {
       : char.startPrompt || '';
 
     let firstGreeting = '';
+    let greetingWarning: string | null = null;
     if (sourceGreeting) {
       try {
         firstGreeting = await localizeGreetingForChat(sourceGreeting, language);
       } catch (error) {
-        console.warn('Could not localize first_mes; using language-aware generated opening instead.', error);
+        // Character Card V2 first_mes remains a valid opening when the optional
+        // localization request cannot run, for example after an OpenRouter rate limit.
+        firstGreeting = sourceGreeting;
+        greetingWarning = greetingFallbackMessage(error);
+        console.warn('Could not localize first_mes; using the stored Character Card greeting as fallback.', error);
       }
     }
 
@@ -329,6 +335,18 @@ export default function App() {
     setActiveChatId(newChatId);
     setCurrentView('chat');
 
+    if (greetingWarning) {
+      setErrorMessage(greetingWarning);
+      addLog({
+        type: 'error',
+        status: 'error',
+        model: settings.modelName || 'openrouter',
+        message: greetingWarning,
+      });
+    } else {
+      setErrorMessage(null);
+    }
+
     if (!firstGreeting) {
       setIsGenerating(true);
       try {
@@ -345,6 +363,9 @@ export default function App() {
           }),
         });
         const data = await response.json();
+        if (!response.ok || data.error) {
+          throw new Error(data.error || `HTTP ${response.status}`);
+        }
         if (data.jobId) {
           setActiveChatJobId(data.jobId);
           addPendingJob({
@@ -354,10 +375,20 @@ export default function App() {
             chatId: newChatId,
             createdAt: Date.now(),
           });
+        } else {
+          throw new Error('Der Start-Chat-Job wurde nicht gestartet.');
         }
       } catch (err) {
+        const errorMsg = formatApiError(err, 'Konnte die Startszene nicht generieren.');
         console.error('Failed to trigger opening scene', err);
+        setErrorMessage(errorMsg);
         setIsGenerating(false);
+        addLog({
+          type: 'error',
+          status: 'error',
+          model: settings.modelName || 'openrouter',
+          message: errorMsg,
+        });
       }
     }
   };
@@ -483,12 +514,13 @@ export default function App() {
           removePendingJob(activeChatJobId);
           setActiveChatJobId(null);
           setIsGenerating(false);
-          setErrorMessage(job.error || 'Fehler bei der Generierung.');
+          const errorMsg = formatApiError(job.error, 'Fehler bei der Generierung.');
+          setErrorMessage(errorMsg);
           addLog({
             type: 'error',
             status: 'error',
             model: settings.modelName || 'openrouter',
-            message: job.error || 'Job fehlgeschlagen',
+            message: errorMsg,
           });
         }
       } catch (err: any) {
