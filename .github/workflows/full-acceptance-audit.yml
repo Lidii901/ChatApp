@@ -30,6 +30,16 @@ jobs:
           sed -i 's/Foto jetzt senden lassen/Szenenmoment senden lassen/g' tests/uiMockAcceptance.mjs
           sed -i 's/Situational photo request job/Situational scene-moment job/g' tests/uiMockAcceptance.mjs
           sed -i 's/photo job lifecycle\/unlock/scene-moment job lifecycle\/unlock/g' tests/uiMockAcceptance.mjs
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('tests/uiMockAcceptance.mjs')
+          s = p.read_text()
+          old = "  await page.getByRole('button', { name: 'Standardinhalte wiederherstellen' }).click();\n  await page.getByRole('button', { name: 'Abbrechen' }).click();"
+          new = "  await page.getByRole('button', { name: 'Standardinhalte wiederherstellen' }).click();\n  await page.getByRole('main').getByRole('button', { name: 'Abbrechen', exact: true }).click();"
+          if old not in s:
+              raise SystemExit('reset cancel selector block not found')
+          p.write_text(s.replace(old, new, 1))
+          PY
 
       - name: Install app dependencies
         run: npm install
