@@ -131,5 +131,39 @@ s = s.replace(
     "const label = Array.from(document.querySelectorAll('label')).find(el => (el.querySelector('span')?.textContent || '').trim() === 'Description');"
 )
 
-# Trigger a fresh preview audit after the real base-character reset fix.
+# Wait for the import modal's documented delayed close instead of assuming a fixed
+# sleep is always enough on a busy CI/browser runner.
+s = s.replace(
+    "  await page.getByRole('button', { name: 'Karte importieren' }).click();\n  await page.waitForTimeout(1500);",
+    "  await page.getByRole('button', { name: 'Karte importieren' }).click();\n  await page.locator('#import-export-modal').waitFor({ state: 'detached', timeout: 8000 });"
+)
+s = s.replace(
+    "  await backupInput.setInputFiles(backupPath);\n  await page.waitForTimeout(1600);",
+    "  await backupInput.setInputFiles(backupPath);\n  await page.locator('#import-export-modal').waitFor({ state: 'detached', timeout: 8000 });"
+)
+s = s.replace(
+    "  await modal.getByRole('button', { name: 'Chat ersetzen' }).click();\n  await page.waitForTimeout(1500);",
+    "  await modal.getByRole('button', { name: 'Chat ersetzen' }).click();\n  await page.locator('#import-export-modal').waitFor({ state: 'detached', timeout: 8000 });"
+)
+
+# Record each failure, then recover only obstructing transient UI so one failed
+# assertion cannot turn every later independent test into a false cascade.
+old = '''    failures.push({ name, detail });
+    console.log(`❌ ${name} — ${detail}`);
+  }
+}'''
+new = '''    failures.push({ name, detail });
+    console.log(`❌ ${name} — ${detail}`);
+    try {
+      const importClose = page.locator('#import-export-modal button[title="Schliessen"]');
+      if (await importClose.count() && await importClose.first().isVisible()) await importClose.first().click({ timeout: 1500 });
+      const drawerClose = page.locator('#chat-menu-drawer-content button[title="Schliessen"]');
+      if (await drawerClose.count() && await drawerClose.first().isVisible()) await drawerClose.first().click({ timeout: 1500 });
+    } catch {}
+  }
+}'''
+if old not in s:
+    raise SystemExit('test failure recovery block not found')
+s = s.replace(old, new, 1)
+
 p.write_text(s)
