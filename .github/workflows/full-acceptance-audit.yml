@@ -1,5 +1,6 @@
 name: Temporary Full Acceptance Audit
 
+# Final deploy-synchronised rerun after the backup-restore UI fix.
 on:
   push:
     branches: [ui-mechat-rework]
