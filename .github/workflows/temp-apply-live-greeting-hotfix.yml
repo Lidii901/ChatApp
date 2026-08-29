@@ -21,7 +21,7 @@ jobs:
           node-version: 22
 
       - name: Apply hotfix
-        run: python3 scripts/apply_live_greeting_hotfix.py
+        run: python3 scripts/apply_live_greeting_hotfix_v2.py
 
       - name: Install dependencies
         run: npm install
@@ -38,15 +38,16 @@ jobs:
       - name: Greeting fallback regression
         run: npx tsx tests/apiErrors.test.ts
 
-      - name: Remove temporary files
+      - name: Prepare clean commit
         run: |
-          rm .github/workflows/temp-apply-live-greeting-hotfix.yml
-          rm scripts/apply_live_greeting_hotfix.py
+          rm -f package-lock.json
+          rm -f scripts/apply_live_greeting_hotfix.py
+          rm -f scripts/apply_live_greeting_hotfix_v2.py
 
-      - name: Commit hotfix
+      - name: Commit hotfix code
         run: |
           git config user.name "Lidii901"
           git config user.email "lidija755@gmail.com"
-          git add -A
+          git add src/App.tsx src/utils/apiErrors.ts tests/apiErrors.test.ts scripts/apply_live_greeting_hotfix.py scripts/apply_live_greeting_hotfix_v2.py
           git commit -m "Handle OpenRouter limits when starting chats"
           git push origin HEAD:fix-live-new-chat-greeting
