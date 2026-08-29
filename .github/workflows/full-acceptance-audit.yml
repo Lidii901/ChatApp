@@ -1,0 +1,37 @@
+name: Temporary Full Acceptance Audit
+
+on:
+  push:
+    branches: [ui-mechat-rework]
+    paths:
+      - 'tests/fullAcceptanceAudit.mjs'
+      - '.github/workflows/full-acceptance-audit.yml'
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ui-mechat-rework
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install app dependencies
+        run: npm install
+
+      - name: Install Playwright for temporary audit
+        run: npm install --no-save playwright
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run full acceptance audit
+        env:
+          PREVIEW_URL: https://chatapp-preview.onrender.com
+        run: node tests/fullAcceptanceAudit.mjs
