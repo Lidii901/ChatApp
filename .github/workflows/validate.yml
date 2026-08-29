@@ -27,6 +27,9 @@ jobs:
       - name: Apply Chub Dean master alignment
         run: python3 scripts/apply_chub_dean_master_alignment.py
 
+      - name: Protect Imitate technical character name
+        run: python3 scripts/fix_chub_impersonation_char_leak.py
+
       - name: Install dependencies
         run: npm install
 
