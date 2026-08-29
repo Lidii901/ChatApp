@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
-import { normalizeLegacyCharacterToV2 } from '../src/utils/characterNormalizer';
+import {
+  migrateKnownDefaultCharacterArtifacts,
+  normalizeLegacyCharacterToV2,
+} from '../src/utils/characterNormalizer';
 
 const legacy: any = {
   id: 'legacy-char',
@@ -60,5 +63,27 @@ assert.equal(preserved.scenario, '');
 assert.equal(preserved.firstMes, '');
 assert.equal(preserved.mesExample, '');
 assert.equal(preserved.postHistoryInstructions, '');
+
+const oldDean: any = {
+  ...legacy,
+  id: 'char-dean',
+  name: 'Dean',
+  appearance: 'Dark coat. Lidii arbeitet als Bibliothekarin. Quiet presence.',
+  relationshipToPlayer: 'Lidii arbeitet als Bibliothekarin. Dean has only observed her from afar.',
+  description: 'Appearance: dark coat.\n\nRelationship / prior context with {{user}}:\nLidii arbeitet als Bibliothekarin. Dean has only observed her from afar.',
+  firstMes: 'Ich blieb einige Schritte vor deinem Schreibtisch stehen.',
+  startPrompt: 'Ich blieb einige Schritte vor deinem Schreibtisch stehen.',
+};
+const cleanedDean = migrateKnownDefaultCharacterArtifacts(oldDean);
+assert.doesNotMatch(cleanedDean.description || '', /Bibliothekarin/);
+assert.doesNotMatch(cleanedDean.relationshipToPlayer || '', /Bibliothekarin/);
+assert.doesNotMatch(cleanedDean.appearance || '', /Bibliothekarin/);
+assert.match(cleanedDean.firstMes || '', /vor deinem Tisch stehen/);
+assert.match(cleanedDean.startPrompt || '', /vor deinem Tisch stehen/);
+
+const unrelatedCharacter = { ...oldDean, id: 'some-other-dean' };
+const untouched = migrateKnownDefaultCharacterArtifacts(unrelatedCharacter);
+assert.match(untouched.description || '', /Bibliothekarin/);
+assert.match(untouched.firstMes || '', /Schreibtisch/);
 
 console.log('Legacy character to Character Card V2 migration assertions passed.');
