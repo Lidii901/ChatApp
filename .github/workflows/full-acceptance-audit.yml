@@ -45,6 +45,11 @@ jobs:
           if old_download not in s:
               raise SystemExit('backup download path block not found')
           s = s.replace(old_download, new_download, 1)
+          old_text_import = "await test('Text import replaces a disposable chat with both roles', async () => {\n  await page.locator('#nav-tab-settings').click();"
+          new_text_import = "await test('Text import replaces a disposable chat with both roles', async () => {\n  await openNewDeanChat('en');\n  await backToMain();\n  await page.locator('#nav-tab-settings').click();"
+          if old_text_import not in s:
+              raise SystemExit('text import setup block not found')
+          s = s.replace(old_text_import, new_text_import, 1)
           p.write_text(s)
           PY
 
