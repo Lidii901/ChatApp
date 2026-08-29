@@ -34,6 +34,9 @@ jobs:
       - name: Language and Chat Memory regression tests
         run: npx tsx tests/chubLanguageRegression.test.ts
 
+      - name: Chub prompt/context/lore parity tests
+        run: npx tsx tests/chubParityRegression.test.ts
+
       - name: Legacy Character Card migration tests
         run: npx tsx tests/legacyCharacterMigration.test.ts
 
