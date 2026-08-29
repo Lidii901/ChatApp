@@ -25,7 +25,9 @@ jobs:
           node-version: 22
 
       - name: Apply grounding refinement
-        run: python3 scripts/refine_imitate_grounding.py
+        run: |
+          python3 scripts/refine_imitate_grounding.py
+          python3 scripts/fix_imitate_test_expectation.py
 
       - name: Install dependencies
         run: npm install
