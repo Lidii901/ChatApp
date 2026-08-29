@@ -4,7 +4,7 @@ on:
   push:
     branches: [ui-mechat-rework]
     paths:
-      - 'tests/fullAcceptanceAudit.mjs'
+      - 'tests/uiMockAcceptance.mjs'
       - '.github/workflows/full-acceptance-audit.yml'
 
 jobs:
@@ -22,144 +22,6 @@ jobs:
         with:
           node-version: 22
 
-      - name: Prepare temporary audit harness
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path('tests/fullAcceptanceAudit.mjs')
-          s = p.read_text()
-
-          s = s.replace(
-            "async function test(name, fn) {\n  try {",
-            "async function test(name, fn) {\n  if (process.env.UI_MOCK_ONLY === '1' && /^Live (greeting|async|Imitate|photo)/.test(name)) {\n    logResult(name, true, 'covered by the earlier live OpenRouter audit; unchanged app code, current free daily quota is exhausted');\n    return;\n  }\n  try {"
-          )
-          s = s.replace(
-            "await page.getByText('Gespeichert').waitFor();",
-            "await page.getByRole('button', { name: 'Gespeichert', exact: true }).waitFor();"
-          )
-          s = s.replace(
-            "return page.locator('[id^=\"message-\"]').first();",
-            "const firstMessage = page.locator('[id^=\"message-\"]').first();\n    await firstMessage.waitFor({ state: 'visible', timeout: 60000 });\n    return firstMessage;"
-          )
-          s = s.replace(
-            "await page.getByRole('button', { name: 'Schliessen' }).click();",
-            "await page.locator('#profile-modal button[title=\"Schliessen\"]').click();"
-          )
-          s = s.replace(
-            "await page.getByTitle('Schliessen').click();\n    return 'profile/context/language/menu ok';",
-            "await page.locator('#chat-menu-drawer-content button[title=\"Schliessen\"]').click();\n    await page.locator('#chat-menu-drawer-backdrop').waitFor({ state: 'detached' });\n    return 'profile/context/language/menu ok';"
-          )
-
-          needle = "  await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: BASE });"
-          injection = r'''
-  if (process.env.UI_MOCK_ONLY === '1') {
-    let mockJobCounter = 0;
-    const mockJobs = new Map();
-
-    await context.route('**/api/localize-greeting', async route => {
-      const body = route.request().postDataJSON() || {};
-      const content = body.language === 'de'
-        ? `Der Buchrücken von The Great Gatsby drückt in deine Handfläche, während du ihn ins Regal schiebst. Die Bibliothek ist ruhig, und nur das Summen der Lampen und das Rascheln von Seiten ist zu hören. Du bemerkst den Fremden zunächst nicht; er steht drei Reihen weiter und beobachtet dich aus der Distanz.\n\nEr stellt sich vor, dass jede kleine Bewegung für ihn bestimmt sein könnte.`
-        : String(body.greeting || '');
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ content, modelUsed: 'ui-audit-mock', latencyMs: 1 }) });
-    });
-
-    await context.route('**/api/jobs/**', async route => {
-      const request = route.request();
-      const url = new URL(request.url());
-      const pathname = url.pathname;
-      const method = request.method();
-
-      if (method === 'POST' && ['/api/jobs/chat', '/api/jobs/imitate', '/api/jobs/start-chat', '/api/jobs/photo'].includes(pathname)) {
-        const body = request.postDataJSON() || {};
-        const type = pathname.split('/').pop();
-        const id = `ui-audit-${type}-${++mockJobCounter}`;
-        const de = body.language === 'de';
-        let result;
-
-        if (type === 'imitate') {
-          result = {
-            draft: de
-              ? 'Ich senke das Buch ein wenig und mustere den Fremden. „Kennen wir uns?“'
-              : 'I lower the book slightly and look at the stranger. “Do I know you?”',
-            modelUsed: 'ui-audit-mock', latencyMs: 1, role: 'lidii', speakerName: body.character?.playerAddressName || 'Lidii'
-          };
-        } else if (type === 'photo') {
-          result = {
-            content: de
-              ? 'Ich schicke dir einen kurzen Eindruck aus der aktuellen Szene.'
-              : 'I send you a brief glimpse of the current scene.',
-            modelUsed: 'ui-audit-mock', latencyMs: 1,
-            role: body.character?.id === 'char-dean' ? 'dean' : 'character',
-            speakerName: body.character?.name || 'Character'
-          };
-        } else if (type === 'start-chat') {
-          result = {
-            content: de ? 'Ich trete aus dem Gang und eröffne die Szene.' : 'I step out of the aisle and open the scene.',
-            modelUsed: 'ui-audit-mock', latencyMs: 1,
-            role: body.character?.id === 'char-dean' ? 'dean' : 'character',
-            speakerName: body.character?.name || 'Character'
-          };
-        } else {
-          const messages = Array.isArray(body.messages) ? body.messages : [];
-          const last = messages.at(-1)?.content || '';
-          const forceFailure = String(last).includes('AUDIT FORCE FAILURE');
-          if (forceFailure) {
-            mockJobs.set(id, { id, type, characterId: body.characterId, chatId: body.chatId, status: 'failed', error: 'AUDIT simulated generation failure' });
-            await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ jobId: id, status: 'running' }) });
-            return;
-          }
-          result = {
-            content: de
-              ? 'Ich ziehe den freien Stuhl heran und setze mich dir gegenüber. „Nicht richtig“, sage ich ruhig. „Aber jetzt reden wir.“'
-              : 'I pull out the empty chair and sit across from you. “Not properly,” I say quietly. “But we are talking now.”',
-            modelUsed: 'ui-audit-mock', latencyMs: 1,
-            role: body.character?.id === 'char-dean' ? 'dean' : 'character',
-            speakerName: body.character?.name || 'Character'
-          };
-        }
-
-        mockJobs.set(id, { id, type, characterId: body.characterId, chatId: body.chatId, status: 'completed', completedAt: Date.now(), result });
-        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ jobId: id, status: 'running' }) });
-        return;
-      }
-
-      if (method === 'GET') {
-        const id = pathname.split('/').pop();
-        const job = mockJobs.get(id);
-        if (job) {
-          await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(job) });
-          return;
-        }
-      }
-
-      await route.continue();
-    });
-  }
-'''
-          if needle not in s:
-            raise SystemExit('context injection needle not found')
-          s = s.replace(needle, needle + injection)
-
-          failure_test_needle = "  await test('UI photo request button completes without locking chat input', async () => {"
-          failure_test = r'''
-  await test('UI failed generation unlocks input and surfaces an error', async () => {
-    const textarea = page.locator('#chat-user-textarea');
-    await textarea.fill('AUDIT FORCE FAILURE');
-    await page.locator('#send-message-btn').click();
-    await page.getByText('AUDIT simulated generation failure').waitFor({ timeout: 30000 });
-    assert.equal(await textarea.isDisabled(), false);
-    return 'failure surfaced and composer recovered';
-  });
-
-'''
-          if failure_test_needle not in s:
-            raise SystemExit('failure-test injection needle not found')
-          s = s.replace(failure_test_needle, failure_test + failure_test_needle)
-
-          p.write_text(s)
-          PY
-
       - name: Install app dependencies
         run: npm install
 
@@ -169,15 +31,14 @@ jobs:
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Run full acceptance audit
+      - name: Run deterministic UI audit
         id: audit
         env:
           PREVIEW_URL: https://chatapp-preview.onrender.com
-          UI_MOCK_ONLY: '1'
         shell: bash
         run: |
           set +e
-          node tests/fullAcceptanceAudit.mjs 2>&1 | tee acceptance-audit.log
+          node tests/uiMockAcceptance.mjs 2>&1 | tee acceptance-audit.log
           status=${PIPESTATUS[0]}
           echo "exit_code=$status" >> "$GITHUB_OUTPUT"
           exit 0
