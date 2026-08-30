@@ -201,12 +201,16 @@ export function buildImitateSystemPrompt(
   const continuationRule = language === 'de'
     ? 'FORTSETZUNG: Schreibe einen neuen Spielerzug, der auf den bisherigen Chat reagiert und die Szene aus Sicht der Spielerfigur fortsetzt. Erzähle, paraphrasiere, spiegle oder schreibe die letzte CHARACTER-Nachricht NICHT aus Sicht der Spielerfigur um. Wiederhole Details daraus nur, wenn die neue Handlung oder die neuen Worte der Spielerfigur direkt darauf reagieren.'
     : 'CONTINUATION: Write a new player turn that reacts to the chat so far and continues the scene from the player perspective. Do NOT retell, paraphrase, mirror, summarize, or rewrite the previous CHARACTER message from the player point of view. Reuse details from it only when the player’s new action or words directly respond to those details.';
+  const focusRule = language === 'de'
+    ? 'UMFANG UND FOKUS: Halte den Entwurf kurz: 2 bis 4 kurze Sätze oder RP-Einheiten. Baue die Szene nicht erneut auf und beschreibe Setting, Atmosphäre, Gegenstände oder die andere Figur nicht noch einmal, nur um den letzten CHARACTER-Text umzuschreiben. Verwende nur Details, die für die unmittelbare neue Handlung, Wahrnehmung oder Worte der Spielerfigur nötig sind. Verwandle reine Erzählerdetails aus einer CHARACTER-Nachricht nicht in neue Wahrnehmungen der Spielerfigur, wenn der bisherige Chat nicht belegt, dass sie diese tatsächlich wahrnehmen konnte.'
+    : 'LENGTH AND FOCUS: Keep the draft brief: 2 to 4 short sentences or RP units. Do not restage the scene or redescribe the setting, atmosphere, objects, or the other character merely to rewrite the previous CHARACTER text. Use only details needed for the player’s immediate new action, perception, or words. Do not turn narrator-only details from a CHARACTER message into new player perceptions unless the chat establishes that the player could actually perceive them.';
 
   return [
     configuredPrompt,
     evidenceSections,
     perspectiveRule,
     continuationRule,
+    focusRule,
     examples
       ? `${language === 'de' ? '=== BISHERIGE STILBEISPIELE VON' : '=== PAST WRITING-STYLE EXAMPLES FROM'} ${playerAddress.toUpperCase()} ===\n${examples}\n\n${language === 'de' ? 'Nutze sie nur für Stimme, Perspektive und Stil. Übertrage keine nicht belegten Fakten.' : 'Use them only for voice, perspective, and style. Do not carry unsupported facts into the current scene.'}`
       : '',
@@ -244,6 +248,9 @@ export function buildImitateUserPrompt(
   prompt += language === 'de'
     ? `\n\nFORTSETZUNG: Reagiere als ${playerAddress} auf den vorhandenen Verlauf und schreibe etwas Neues. Erzähle, paraphrasiere, spiegle oder schreibe die letzte CHARACTER-Nachricht NICHT aus Sicht von ${playerAddress} um. Wiederhole ein Detail daraus nur, wenn ${playerAddress}s neue Handlung oder Worte direkt darauf reagieren.`
     : `\n\nCONTINUATION: React as ${playerAddress} to the existing history and write something new. Do NOT retell, paraphrase, mirror, summarize, or rewrite the previous CHARACTER message from ${playerAddress}'s point of view. Repeat a detail from it only when ${playerAddress}'s new action or words directly respond to that detail.`;
+  prompt += language === 'de'
+    ? `\n\nUMFANG UND FOKUS: Schreibe nur 2 bis 4 kurze Sätze oder RP-Einheiten. Baue Setting und Atmosphäre nicht erneut auf und beschreibe die andere Figur nicht erneut. Nutze nur Details, die ${playerAddress} für die unmittelbare neue Handlung, Wahrnehmung oder Worte braucht. Mache aus reinen Erzählerdetails der CHARACTER-Nachricht keine neue Wahrnehmung von ${playerAddress}, solange der Chat nicht belegt, dass ${playerAddress} sie tatsächlich wahrnehmen konnte.`
+    : `\n\nLENGTH AND FOCUS: Write only 2 to 4 short sentences or RP units. Do not restage the setting or atmosphere and do not redescribe the other character. Use only details ${playerAddress} needs for the immediate new action, perception, or words. Do not turn narrator-only details from the CHARACTER message into a new perception by ${playerAddress} unless the chat establishes that ${playerAddress} could actually perceive them.`;
   return prompt;
 }
 
