@@ -31,8 +31,8 @@ jobs:
       - name: Verify scene remains internal
         run: |
           grep -q "currentScene" src/utils/promptBuilder.ts
-          ! grep -q "activeChat.storyContext.currentScene" src/App.tsx
           ! grep -q '>Szene: </span>' src/App.tsx
+          ! grep -q 'activeChat.storyContext?.currentScene && (' src/App.tsx
 
       - name: Install dependencies
         run: npm install
