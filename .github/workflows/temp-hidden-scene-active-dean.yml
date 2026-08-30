@@ -1,0 +1,70 @@
+name: Temporary hidden scene active Dean fix
+
+on:
+  push:
+    branches: [fix-hidden-scene-active-dean]
+    paths:
+      - scripts/apply_hidden_scene_active_dean_fix.py
+      - .github/workflows/temp-hidden-scene-active-dean.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-test-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: fix-hidden-scene-active-dean
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Apply hidden-scene active-Dean fix
+        run: python3 scripts/apply_hidden_scene_active_dean_fix.py
+
+      - name: Verify scene remains internal
+        run: |
+          grep -q "currentScene" src/utils/promptBuilder.ts
+          ! grep -q "activeChat.storyContext.currentScene" src/App.tsx
+          ! grep -q '>Szene: </span>' src/App.tsx
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: TypeScript check
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: Existing prompt/converter tests
+        run: npm run test:prompt
+
+      - name: Language and Chat Memory regression tests
+        run: npx tsx tests/chubLanguageRegression.test.ts
+
+      - name: Chub prompt/context/lore parity tests
+        run: npx tsx tests/chubParityRegression.test.ts
+
+      - name: Legacy Character Card migration tests
+        run: npx tsx tests/legacyCharacterMigration.test.ts
+
+      - name: Imitate Me regression tests
+        run: npx tsx tests/imitateKnowledge.test.ts
+
+      - name: API error and greeting fallback regression tests
+        run: npx tsx tests/apiErrors.test.ts
+
+      - name: Commit tested fix
+        run: |
+          git config user.name "Lidii901"
+          git config user.email "lidija755@gmail.com"
+          git add src/App.tsx src/data/defaultCharacters.ts src/utils/characterNormalizer.ts tests/legacyCharacterMigration.test.ts
+          git commit -m "Hide scene context and reinforce Dean initiative"
+          git push origin HEAD:fix-hidden-scene-active-dean
