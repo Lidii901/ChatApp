@@ -198,11 +198,15 @@ export function buildImitateSystemPrompt(
     : (language === 'de'
         ? 'PERSPEKTIVE: Es gibt noch keine Stilbeispiele der Spielerfigur. Verwende standardmässig die erste Person Singular (ich/mein/mir/mich) und erzähle die Spielerfigur NICHT in der dritten Person.'
         : 'PERSPECTIVE: There are no player writing-style examples yet. Default to first-person singular (I/my/me) and do NOT narrate the player character in third person.');
+  const continuationRule = language === 'de'
+    ? 'FORTSETZUNG: Schreibe einen neuen Spielerzug, der auf den bisherigen Chat reagiert und die Szene aus Sicht der Spielerfigur fortsetzt. Erzähle, paraphrasiere, spiegle oder schreibe die letzte CHARACTER-Nachricht NICHT aus Sicht der Spielerfigur um. Wiederhole Details daraus nur, wenn die neue Handlung oder die neuen Worte der Spielerfigur direkt darauf reagieren.'
+    : 'CONTINUATION: Write a new player turn that reacts to the chat so far and continues the scene from the player perspective. Do NOT retell, paraphrase, mirror, summarize, or rewrite the previous CHARACTER message from the player point of view. Reuse details from it only when the player’s new action or words directly respond to those details.';
 
   return [
     configuredPrompt,
     evidenceSections,
     perspectiveRule,
+    continuationRule,
     examples
       ? `${language === 'de' ? '=== BISHERIGE STILBEISPIELE VON' : '=== PAST WRITING-STYLE EXAMPLES FROM'} ${playerAddress.toUpperCase()} ===\n${examples}\n\n${language === 'de' ? 'Nutze sie nur für Stimme, Perspektive und Stil. Übertrage keine nicht belegten Fakten.' : 'Use them only for voice, perspective, and style. Do not carry unsupported facts into the current scene.'}`
       : '',
@@ -230,23 +234,16 @@ export function buildImitateUserPrompt(
     })
     .join('\n\n');
 
-  const lastCharMsg = [...recentMessages].reverse().find(
-    (message: any) => message.role !== 'lidii' && message.role !== 'user'
-  );
-
   let prompt = language === 'de'
     ? `Hier ist der tatsächliche Rollenspielverlauf, der in den aktuellen Kontext passt. Sprecherlabels sind technische Labels und kein Beweis dafür, welche Namen die Spielerfigur in-world kennt:\n\n${conversationHistoryText}\n\n`
     : `Here is the actual roleplay history that fits in the current context. Speaker labels are technical labels and are not proof of which names the player character knows in-world:\n\n${conversationHistoryText}\n\n`;
 
-  if (lastCharMsg) {
-    prompt += language === 'de'
-      ? `[LETZTE AKTION/WORTE DER ANDEREN FIGUR]:\n${lastCharMsg.content}\n\n`
-      : `[OTHER CHARACTER'S LAST ACTION/WORDS]:\n${lastCharMsg.content}\n\n`;
-  }
-
   prompt += language === 'de'
     ? `AUFGABE: Verfasse jetzt ausschliesslich den nächsten Spielzug von ${playerAddress}. Bewahre exakt den belegten Beziehungs- und Wissensstand. Behandle private Gedanken, innere Erzählung, unbeobachtete Handlungen und geheime Informationen der anderen Figur NICHT als Wissen von ${playerAddress}. Erfinde keine frühere Bekanntschaft und keine Gewissheit über verborgene Handlungen. Subjektive Ahnung, Unbehagen, Neugier oder Anziehung darfst du schreiben, solange sie nicht als Wissen über geheimes Stalking oder unbekannte Motive dargestellt wird. Verändere bereits etablierte physische Szenenzustände nur, wenn der neue Spielzug selbst eine plausible Handlung dafür ausführt oder ein etabliertes Ereignis die Änderung verursacht.`
     : `TASK: Write only ${playerAddress}'s next roleplay turn. Preserve exactly the established relationship and knowledge state. Do NOT treat the other character's private thoughts, internal narration, unseen actions or secret information as knowledge possessed by ${playerAddress}. Do not invent prior familiarity or certainty about hidden actions. You may write subjective unease, curiosity, suspicion or attraction when it fits the observable scene, but never present hidden stalking or unknown motives as facts known by the player. Change an already established physical scene state only when the new turn itself performs a plausible action that causes the change or an established event causes it.`;
+  prompt += language === 'de'
+    ? `\n\nFORTSETZUNG: Reagiere als ${playerAddress} auf den vorhandenen Verlauf und schreibe etwas Neues. Erzähle, paraphrasiere, spiegle oder schreibe die letzte CHARACTER-Nachricht NICHT aus Sicht von ${playerAddress} um. Wiederhole ein Detail daraus nur, wenn ${playerAddress}s neue Handlung oder Worte direkt darauf reagieren.`
+    : `\n\nCONTINUATION: React as ${playerAddress} to the existing history and write something new. Do NOT retell, paraphrase, mirror, summarize, or rewrite the previous CHARACTER message from ${playerAddress}'s point of view. Repeat a detail from it only when ${playerAddress}'s new action or words directly respond to that detail.`;
   return prompt;
 }
 
