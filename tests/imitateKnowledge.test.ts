@@ -57,6 +57,24 @@ assert.match(englishSystem, /Don't describe actions of the other character/i);
 assert.match(englishSystem, /Preserve already established objective scene state/i);
 assert.match(englishSystem, /open\/closed, position or posture, held\/placed objects/i);
 assert.match(englishUserPrompt, /already established physical scene state/i);
+assert.match(englishSystem, /CONTINUATION: Write a new player turn/i);
+assert.match(englishSystem, /Do NOT retell, paraphrase, mirror, summarize, or rewrite the previous CHARACTER message/i);
+
+const gatsbyCharacterTurn = 'The spine of The Great Gatsby presses into your palm as you slide it into place on the shelf.';
+const gatsbyImitatePrompt = buildImitateUserPrompt(
+  technicalOnlyCharacter,
+  [{ role: 'character', content: gatsbyCharacterTurn }],
+  'en',
+  10
+);
+assert.equal(
+  gatsbyImitatePrompt.split(gatsbyCharacterTurn).length - 1,
+  1,
+  'The latest CHARACTER message must appear only once in the Imitate Me input instead of being duplicated near the task instruction.'
+);
+assert.doesNotMatch(gatsbyImitatePrompt, /OTHER CHARACTER'S LAST ACTION\/WORDS/i);
+assert.match(gatsbyImitatePrompt, /React as Player to the existing history and write something new/i);
+assert.match(gatsbyImitatePrompt, /Do NOT retell, paraphrase, mirror, summarize, or rewrite the previous CHARACTER message/i);
 
 const styledSystem = buildImitateSystemPrompt(
   technicalOnlyCharacter,
@@ -105,6 +123,8 @@ const germanSystem = buildImitateSystemPrompt(
 assert.match(germanSystem, /beweist NICHT/i);
 assert.match(germanSystem, /Erfinde keine frühere Bekanntschaft/i);
 assert.match(germanSystem, /Bewahre bereits etablierte objektive Szenenzustände/i);
+assert.match(germanSystem, /FORTSETZUNG: Schreibe einen neuen Spielerzug/i);
+assert.match(germanSystem, /paraphrasiere, spiegle oder schreibe die letzte CHARACTER-Nachricht NICHT/i);
 
 const loreSystem = buildImitateSystemPrompt(
   technicalOnlyCharacter,
