@@ -28,11 +28,12 @@ jobs:
       - name: Apply hidden-scene active-Dean fix
         run: python3 scripts/apply_hidden_scene_active_dean_fix.py
 
-      - name: Verify scene remains internal
+      - name: Verify scene is hidden but prompt-effective
         run: |
-          grep -q "currentScene" src/utils/promptBuilder.ts
-          ! grep -q '>Szene: </span>' src/App.tsx
-          ! grep -q 'activeChat.storyContext?.currentScene && (' src/App.tsx
+          grep -Fq 'function buildCurrentScene(storyContext: any)' src/utils/promptBuilder.ts
+          grep -Fq 'Current Scene:' src/utils/promptBuilder.ts
+          ! grep -Fq '>Szene: </span>' src/App.tsx
+          ! grep -Fq 'activeChat.storyContext?.currentScene && (' src/App.tsx
 
       - name: Install dependencies
         run: npm install
@@ -65,6 +66,6 @@ jobs:
         run: |
           git config user.name "Lidii901"
           git config user.email "lidija755@gmail.com"
-          git add src/App.tsx src/data/defaultCharacters.ts src/utils/characterNormalizer.ts tests/legacyCharacterMigration.test.ts
+          git add src/App.tsx src/data/defaultCharacters.ts src/utils/characterNormalizer.ts src/utils/promptBuilder.ts tests/legacyCharacterMigration.test.ts tests/chubParityRegression.test.ts
           git commit -m "Hide scene context and reinforce Dean initiative"
           git push origin HEAD:fix-hidden-scene-active-dean
