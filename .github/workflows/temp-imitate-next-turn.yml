@@ -1,0 +1,64 @@
+name: Temporary Imitate Me next-turn fix
+
+on:
+  push:
+    branches: [fix-imitate-next-turn]
+    paths:
+      - scripts/apply_imitate_next_turn_fix.py
+      - .github/workflows/temp-imitate-next-turn.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-test-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: fix-imitate-next-turn
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Apply Imitate Me fix
+        run: python3 scripts/apply_imitate_next_turn_fix.py
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: TypeScript check
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: Existing prompt/converter tests
+        run: npm run test:prompt
+
+      - name: Language and Chat Memory regression tests
+        run: npx tsx tests/chubLanguageRegression.test.ts
+
+      - name: Chub prompt/context/lore parity tests
+        run: npx tsx tests/chubParityRegression.test.ts
+
+      - name: Legacy Character Card migration tests
+        run: npx tsx tests/legacyCharacterMigration.test.ts
+
+      - name: Imitate Me knowledge and next-turn regression tests
+        run: npx tsx tests/imitateKnowledge.test.ts
+
+      - name: API error and greeting fallback regression tests
+        run: npx tsx tests/apiErrors.test.ts
+
+      - name: Commit tested fix
+        run: |
+          git config user.name "Lidii901"
+          git config user.email "lidija755@gmail.com"
+          git add server.ts tests/imitateKnowledge.test.ts
+          git commit -m "Keep Imitate Me on the player's next turn"
+          git push origin HEAD:fix-imitate-next-turn
