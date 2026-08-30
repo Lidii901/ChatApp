@@ -41,6 +41,6 @@ assert insert_anchor in test, 'Legacy test insertion anchor not found'
 test = test.replace(insert_anchor, regression + insert_anchor, 1)
 test_path.write_text(test)
 
-# Local structural checks used by the temporary workflow.
-assert 'activeChat.storyContext?.currentScene && (' not in app, 'Scene prompt is still visibly rendered in App.tsx'
-assert 'activeChat.storyContext.currentScene' not in app, 'Scene prompt text is still rendered in App.tsx'
+# Local structural check: only the visible Scene card is removed. currentScene
+# remains available elsewhere in App/state and in the prompt builder.
+assert scene_block not in app, 'Visible Scene card is still rendered in App.tsx'
