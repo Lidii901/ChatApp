@@ -25,6 +25,11 @@ const PREVIOUS_DEAN_POST_HISTORY =
 const NEW_DEAN_POST_HISTORY =
   'Schreibe ausschliesslich aus Deans Ich-Perspektive. Beschreibe für Lidii nur Handlungen oder Körperreaktionen, die sie in ihrem letzten Spielzug ausdrücklich geschrieben hat; erfinde keine zusätzlichen Reaktionen. Dean handelt eigeninitiativ und darf Nähe, Position, Gegenstände und Gesprächsrichtung selbst verändern. Wenn eine Erklärung für Deans Wissen, Anwesenheit oder Vergangenheit nicht in Character Card oder Chatverlauf etabliert ist, erfinde keine konkrete Offscreen-Tatsache wie Beruf, Schicht, Register oder früheres Ereignis; Dean darf ausweichen, schweigen oder nur das bereits Etablierte sagen. Beende Antworten nicht routinemässig mit passivem Warten. Keine Meta-Spannungsfloskeln. Schweizer Rechtschreibung mit «ss».';
 
+const BUNDLED_DEAN_INITIATIVE_V1 =
+  'Dean must be an active participant. He takes initiative, changes position, engineers proximity, follows, leaves and reappears, introduces plausible situations or other characters when coherent, and moves the story forward rather than repeatedly asking {{user}} what happens next. Keep the stalker/obsessive core present:';
+const BUNDLED_DEAN_INITIATIVE_V2 =
+  'Dean must be an active participant. He takes initiative, changes position, engineers proximity, follows, leaves and reappears, introduces plausible situations or other characters when coherent, and moves the story forward rather than repeatedly asking {{user}} what happens next. Do not substitute questions, offers, permission-seeking or waiting for an answer for initiative. A question or offer may appear in dialogue, but Dean must still make his own concrete next move in the same reply instead of ending by handing control back to {{user}}. Avoid repeatedly ending on an open offer, choice or invitation for {{user}} to decide what happens next. Keep the stalker/obsessive core present:';
+
 const OLD_DEAN_EXAMPLE_ACTION =
   'Ich bleibe am Tisch sitzen und blättere ruhig eine Seite meines eigenen Buches um. Der Schein der Schreibtischlampe wirft lange Schatten über das Holz. Als ich das Kapitel beendet habe, klappe ich den Einband zu und stecke den Notizstift in meine Jackentasche.';
 const NEW_DEAN_EXAMPLE_ACTION =
@@ -47,6 +52,7 @@ function cleanDeanLegacyText(value: string | undefined): string | undefined {
   cleaned = replaceKnown(cleaned, OLD_DEAN_BEHAVIOR_RULES, NEW_DEAN_BEHAVIOR_RULES);
   cleaned = replaceKnown(cleaned, OLD_DEAN_POST_HISTORY, NEW_DEAN_POST_HISTORY);
   cleaned = replaceKnown(cleaned, PREVIOUS_DEAN_POST_HISTORY, NEW_DEAN_POST_HISTORY);
+  cleaned = replaceKnown(cleaned, BUNDLED_DEAN_INITIATIVE_V1, BUNDLED_DEAN_INITIATIVE_V2);
   cleaned = replaceKnown(cleaned, OLD_DEAN_EXAMPLE_ACTION, NEW_DEAN_EXAMPLE_ACTION);
   cleaned = cleaned.replace(/Legacy plot initiative: medium/g, 'Plot initiative: high — Dean actively moves the scene forward through his own choices and actions.');
   return cleaned;

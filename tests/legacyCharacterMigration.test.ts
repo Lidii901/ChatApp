@@ -101,6 +101,12 @@ assert.match(cleanedDean.mesExample || '', /ziehe den freien Stuhl/);
 assert.equal(cleanedDean.initiativeLevel, 'high');
 assert.equal(cleanedDean.plotInitiative, 'high');
 
+const bundledDeanInitiativeV1 = 'Dean must be an active participant. He takes initiative, changes position, engineers proximity, follows, leaves and reappears, introduces plausible situations or other characters when coherent, and moves the story forward rather than repeatedly asking {{user}} what happens next. Keep the stalker/obsessive core present:';
+const bundledDean: any = { ...directV2, id: 'char-dean', name: 'Dean', postHistoryInstructions: bundledDeanInitiativeV1 };
+const upgradedBundledDean = migrateKnownDefaultCharacterArtifacts(bundledDean);
+assert.match(upgradedBundledDean.postHistoryInstructions || '', /Do not substitute questions, offers, permission-seeking or waiting for an answer for initiative/);
+assert.match(upgradedBundledDean.postHistoryInstructions || '', /Dean must still make his own concrete next move in the same reply/);
+
 const unrelatedCharacter = { ...oldDean, id: 'some-other-dean' };
 const untouched = migrateKnownDefaultCharacterArtifacts(unrelatedCharacter);
 assert.match(untouched.description || '', /Bibliothekarin/);

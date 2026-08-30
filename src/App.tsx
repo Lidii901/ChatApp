@@ -946,13 +946,6 @@ export default function App() {
               onScroll={handleScroll}
               className="flex-1 overflow-y-auto py-3 space-y-1"
             >
-              {activeChat.storyContext?.currentScene && (
-                <div className="my-2.5 mx-4 rounded-xl border border-zinc-800/80 bg-zinc-950/60 p-2.5 text-center text-[11px] text-zinc-400">
-                  <span className="font-semibold text-zinc-300">Szene: </span>
-                  {activeChat.storyContext.currentScene}
-                </div>
-              )}
-
               {activeChat.messages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-48 text-center text-zinc-500 text-xs px-6">
                   <p className="font-medium text-zinc-400 mb-1">Noch keine Nachrichten in diesem Chat.</p>

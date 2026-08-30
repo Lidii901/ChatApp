@@ -46,7 +46,7 @@ const configPayload = buildChatPayload({
   character: base,
   messages: [{ role: 'lidii', content: 'Continue.' }],
   language: 'en',
-  storyContext: { profile: 'PLAYER_PROFILE', sceneSummary: 'SUMMARY' },
+  storyContext: { profile: 'PLAYER_PROFILE', currentScene: 'CURRENT_SCENE', sceneSummary: 'SUMMARY' },
   promptConfig: {
     contextSizeTokens: 8192,
     maxOutputTokens: 512,
@@ -60,6 +60,7 @@ assert.ok(configPayload.messages.some(message => message.role === 'system' && me
 assert.deepEqual(configPayload.messages.at(-1), { role: 'assistant', content: 'PREFILL:' });
 assert.equal(configPayload.promptNote, 'NOTE PLAYER_PROFILE / SUMMARY');
 assert.equal(configPayload.assistantPrefill, 'PREFILL:');
+assert.match(configPayload.messages[0].content, /Current Scene:\nCURRENT_SCENE/);
 
 // Character-definition macros are expanded in the actual definition text.
 assert.match(configPayload.characterDefinitions, /Description for Character and Player\./);
