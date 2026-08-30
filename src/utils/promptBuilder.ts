@@ -235,6 +235,12 @@ export function buildCharacterDefinitions(
   ].filter(value => value && value.trim()).join('\n\n');
 }
 
+function buildCurrentScene(storyContext: any): string {
+  const currentScene = String(storyContext?.currentScene || '').trim();
+  if (!currentScene) return '';
+  return `Current Scene:\n${currentScene}`;
+}
+
 function buildChatMemory(storyContext: any): string {
   const summary = String(storyContext?.sceneSummary || '').trim();
   if (!summary) return '';
@@ -356,9 +362,10 @@ export function buildChatPayload(input: {
     ? activatedCharacterBookEntries.filter(entry => entry.position !== 'before_char').map(entry => entry.content.trim()).join('\n\n')
     : '';
 
+  const currentScene = buildCurrentScene(storyContext);
   const chatMemory = containsMacro(character, 'summary') ? '' : buildChatMemory(storyContext);
   const languageGuard = finalLanguageGuard(language);
-  const systemContent = [systemPrompt, beforeLore, characterDefinitions, afterLore, chatMemory, languageGuard].filter(Boolean).join('\n\n');
+  const systemContent = [systemPrompt, beforeLore, characterDefinitions, afterLore, currentScene, chatMemory, languageGuard].filter(Boolean).join('\n\n');
 
   const resolvedDepthPrompt = depthPrompt(character);
   const characterNoteContent = resolvedDepthPrompt
